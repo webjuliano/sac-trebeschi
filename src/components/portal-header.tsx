@@ -1,13 +1,23 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Leaf, LogOut } from "lucide-react";
+import { Leaf, LogOut, Settings } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { obterMeuAcesso } from "@/lib/admin.functions";
 
 export function PortalHeader({ interno = false }: { interno?: boolean }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const consultarAcesso = useServerFn(obterMeuAcesso);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!interno) return;
+    consultarAcesso().then((acesso) => setIsAdmin(acesso.isAdmin)).catch(() => setIsAdmin(false));
+  }, [consultarAcesso, interno]);
 
   async function sair() {
     await queryClient.cancelQueries();
@@ -29,7 +39,7 @@ export function PortalHeader({ interno = false }: { interno?: boolean }) {
           </span>
         </Link>
         {interno ? (
-          <Button variant="ghost" size="sm" onClick={sair}><LogOut /> Sair</Button>
+          <div className="flex items-center gap-1">{isAdmin && <Button asChild variant="ghost" size="sm"><Link to="/admin"><Settings /> Administração</Link></Button>}<Button variant="ghost" size="sm" onClick={sair}><LogOut /> Sair</Button></div>
         ) : (
           <Button asChild variant="outline" size="sm"><Link to="/auth">Acesso da equipe</Link></Button>
         )}
