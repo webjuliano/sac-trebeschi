@@ -22,6 +22,13 @@
       "when": 1790002965105,
       "tag": "0002_create_notificacoes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790002989267,
+      "tag": "0003_primeiro_usuario_admin",
+      "breakpoints": true
     }
   ]
 }
