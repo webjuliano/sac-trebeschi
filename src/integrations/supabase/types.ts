@@ -14,16 +14,371 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      configuracoes: {
+        Row: {
+          chave: string
+          descricao: string | null
+          updated_at: string
+          valor: string
+        }
+        Insert: {
+          chave: string
+          descricao?: string | null
+          updated_at?: string
+          valor: string
+        }
+        Update: {
+          chave?: string
+          descricao?: string | null
+          updated_at?: string
+          valor?: string
+        }
+        Relationships: []
+      }
+      lojas: {
+        Row: {
+          ativa: boolean
+          cnpj: string | null
+          codigo: string
+          created_at: string
+          email_contato: string | null
+          id: string
+          nome: string
+          rede: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          cnpj?: string | null
+          codigo: string
+          created_at?: string
+          email_contato?: string | null
+          id?: string
+          nome: string
+          rede?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          cnpj?: string | null
+          codigo?: string
+          created_at?: string
+          email_contato?: string | null
+          id?: string
+          nome?: string
+          rede?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          nome?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      protocolo_eventos: {
+        Row: {
+          autor_id: string | null
+          autor_nome: string | null
+          created_at: string
+          descricao: string
+          id: string
+          protocolo_id: string
+          tipo: string
+        }
+        Insert: {
+          autor_id?: string | null
+          autor_nome?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          protocolo_id: string
+          tipo: string
+        }
+        Update: {
+          autor_id?: string | null
+          autor_nome?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          protocolo_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocolo_eventos_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "protocolos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocolo_fotos: {
+        Row: {
+          created_at: string
+          expurgada: boolean
+          expurgada_em: string | null
+          id: string
+          item_id: string | null
+          protocolo_id: string
+          storage_path: string
+          tamanho_bytes: number | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          expurgada?: boolean
+          expurgada_em?: string | null
+          id?: string
+          item_id?: string | null
+          protocolo_id: string
+          storage_path: string
+          tamanho_bytes?: number | null
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          expurgada?: boolean
+          expurgada_em?: string | null
+          id?: string
+          item_id?: string | null
+          protocolo_id?: string
+          storage_path?: string
+          tamanho_bytes?: number | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocolo_fotos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "protocolo_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocolo_fotos_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "protocolos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocolo_itens: {
+        Row: {
+          codigo_produto: string | null
+          created_at: string
+          descricao: string
+          id: string
+          lote: string | null
+          motivo: string | null
+          protocolo_id: string
+          quantidade: number
+          quantidade_aceita: number | null
+          unidade: string | null
+          validade: string | null
+          valor_unitario: number
+        }
+        Insert: {
+          codigo_produto?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          lote?: string | null
+          motivo?: string | null
+          protocolo_id: string
+          quantidade?: number
+          quantidade_aceita?: number | null
+          unidade?: string | null
+          validade?: string | null
+          valor_unitario?: number
+        }
+        Update: {
+          codigo_produto?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          lote?: string | null
+          motivo?: string | null
+          protocolo_id?: string
+          quantidade?: number
+          quantidade_aceita?: number | null
+          unidade?: string | null
+          validade?: string | null
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocolo_itens_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "protocolos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocolos: {
+        Row: {
+          canhoto_confirmado_em: string | null
+          canhoto_confirmado_por: string | null
+          canhoto_path: string | null
+          cliente_email: string
+          cliente_nome: string
+          cliente_telefone: string | null
+          created_at: string
+          data_compra: string | null
+          decidido_em: string | null
+          decidido_por: string | null
+          descricao: string | null
+          encerrado_em: string | null
+          id: string
+          loja_codigo: string | null
+          loja_id: string | null
+          loja_nome: string
+          motivo: string
+          nf_devolucao: string | null
+          nota_fiscal: string | null
+          numero: string
+          parecer: string | null
+          pedido: string | null
+          responsavel_id: string | null
+          status: Database["public"]["Enums"]["protocolo_status"]
+          updated_at: string
+          valor_total: number
+        }
+        Insert: {
+          canhoto_confirmado_em?: string | null
+          canhoto_confirmado_por?: string | null
+          canhoto_path?: string | null
+          cliente_email: string
+          cliente_nome: string
+          cliente_telefone?: string | null
+          created_at?: string
+          data_compra?: string | null
+          decidido_em?: string | null
+          decidido_por?: string | null
+          descricao?: string | null
+          encerrado_em?: string | null
+          id?: string
+          loja_codigo?: string | null
+          loja_id?: string | null
+          loja_nome: string
+          motivo: string
+          nf_devolucao?: string | null
+          nota_fiscal?: string | null
+          numero: string
+          parecer?: string | null
+          pedido?: string | null
+          responsavel_id?: string | null
+          status?: Database["public"]["Enums"]["protocolo_status"]
+          updated_at?: string
+          valor_total?: number
+        }
+        Update: {
+          canhoto_confirmado_em?: string | null
+          canhoto_confirmado_por?: string | null
+          canhoto_path?: string | null
+          cliente_email?: string
+          cliente_nome?: string
+          cliente_telefone?: string | null
+          created_at?: string
+          data_compra?: string | null
+          decidido_em?: string | null
+          decidido_por?: string | null
+          descricao?: string | null
+          encerrado_em?: string | null
+          id?: string
+          loja_codigo?: string | null
+          loja_id?: string | null
+          loja_nome?: string
+          motivo?: string
+          nf_devolucao?: string | null
+          nota_fiscal?: string | null
+          numero?: string
+          parecer?: string | null
+          pedido?: string | null
+          responsavel_id?: string | null
+          status?: Database["public"]["Enums"]["protocolo_status"]
+          updated_at?: string
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocolos_loja_id_fkey"
+            columns: ["loja_id"]
+            isOneToOne: false
+            referencedRelation: "lojas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_equipe: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "analista" | "loja"
+      protocolo_status:
+        | "aberto"
+        | "em_analise"
+        | "aguardando_cliente"
+        | "aceito_total"
+        | "aceito_parcial"
+        | "recusado"
+        | "aguardando_nf"
+        | "coletado"
+        | "encerrado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +505,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "analista", "loja"],
+      protocolo_status: [
+        "aberto",
+        "em_analise",
+        "aguardando_cliente",
+        "aceito_total",
+        "aceito_parcial",
+        "recusado",
+        "aguardando_nf",
+        "coletado",
+        "encerrado",
+      ],
+    },
   },
 } as const
