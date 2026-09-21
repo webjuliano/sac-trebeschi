@@ -51,7 +51,7 @@ Loja abre solicitação (formulário + fotos)
 
 ## Pontos técnicos
 
-- Banco de dados e armazenamento de arquivos na infraestrutura da Lovable, com controle de acesso por perfil (loja vê só os próprios protocolos; equipe Trebeschi vê tudo).
+- Banco de dados e armazenamento de arquivos no Supabase (é exatamente o que a Lovable já usa por baixo, então a escolha se encaixa direto), com controle de acesso por perfil (loja vê só os próprios protocolos; equipe Trebeschi vê tudo).
 - Integração Sankhya via serviço no servidor, com as credenciais guardadas como segredo.
 - Rotina agendada diária para o expurgo de fotos.
 - E-mails transacionais com domínio próprio.
