@@ -379,6 +379,35 @@ export type Database = {
           },
         ]
       }
+      user_lojas: {
+        Row: {
+          created_at: string
+          id: string
+          loja_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          loja_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          loja_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_lojas_loja_id_fkey"
+            columns: ["loja_id"]
+            isOneToOne: false
+            referencedRelation: "lojas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -413,6 +442,10 @@ export type Database = {
         Returns: boolean
       }
       is_equipe: { Args: { _user_id: string }; Returns: boolean }
+      usuario_tem_acesso_loja: {
+        Args: { _loja_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "analista" | "loja"

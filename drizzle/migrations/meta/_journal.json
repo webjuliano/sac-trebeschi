@@ -29,6 +29,13 @@
       "when": 1790002989267,
       "tag": "0003_primeiro_usuario_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790015464601,
+      "tag": "0004_add_user_store_access",
+      "breakpoints": true
     }
   ]
 }
