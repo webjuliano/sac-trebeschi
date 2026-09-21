@@ -15,6 +15,13 @@
       "when": 1790002876511,
       "tag": "0001_storage_policies_protocolo_fotos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790002965105,
+      "tag": "0002_create_notificacoes",
+      "breakpoints": true
     }
   ]
 }

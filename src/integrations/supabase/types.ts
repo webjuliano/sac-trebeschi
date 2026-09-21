@@ -71,6 +71,53 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes: {
+        Row: {
+          assunto: string
+          canal: string
+          corpo: string
+          created_at: string
+          destinatario: string
+          enviado_em: string | null
+          erro: string | null
+          id: string
+          protocolo_id: string | null
+          status: string
+        }
+        Insert: {
+          assunto: string
+          canal?: string
+          corpo: string
+          created_at?: string
+          destinatario: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          protocolo_id?: string | null
+          status?: string
+        }
+        Update: {
+          assunto?: string
+          canal?: string
+          corpo?: string
+          created_at?: string
+          destinatario?: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          protocolo_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "protocolos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
