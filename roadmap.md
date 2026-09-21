@@ -13,9 +13,9 @@
 - [x] Decisão (aceito total/parcial/recusado) + notificação registrada
 
 ## Gestão de acessos
-- [ ] Tela administrativa para cadastrar lojas e usuários
-- [ ] Vínculo de um usuário a uma ou várias lojas
-- [ ] Restrição de protocolos conforme as lojas vinculadas
+- [x] Tela administrativa para cadastrar lojas e usuários
+- [x] Vínculo de um usuário a uma ou várias lojas
+- [x] Restrição de protocolos conforme as lojas vinculadas
 
 ## Etapa 3 — Sankhya
 - [ ] Serviço de integração no servidor (credenciais como segredo)

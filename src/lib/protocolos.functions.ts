@@ -233,7 +233,8 @@ export const obterProtocolo = createServerFn({ method: "POST" })
     const fotosComUrl = await Promise.all(
       (fotos.data ?? []).map(async (foto) => {
         if (foto.expurgada) return { ...foto, url: null };
-        const { data: signed } = await context.supabase.storage
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: signed } = await supabaseAdmin.storage
           .from("protocolo-fotos")
           .createSignedUrl(foto.storage_path, 60 * 30);
         return { ...foto, url: signed?.signedUrl ?? null };
