@@ -261,6 +261,15 @@ const decisaoSchema = z.object({
     "encerrado",
   ]),
   parecer: z.string().trim().max(2000).optional().nullable(),
+  quantidades: z
+    .array(
+      z.object({
+        item_id: z.string().uuid(),
+        quantidade_aceita: z.number().min(0).max(999999),
+      }),
+    )
+    .max(40)
+    .optional(),
 });
 
 const ROTULOS: Record<string, string> = {
@@ -279,6 +288,20 @@ export const registrarDecisao = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => decisaoSchema.parse(data))
   .handler(async ({ data, context }) => {
     const decisivo = ["aceito_total", "aceito_parcial", "recusado"].includes(data.status);
+
+    if (data.quantidades?.length) {
+      const resultados = await Promise.all(
+        data.quantidades.map((item) =>
+          context.supabase
+            .from("protocolo_itens")
+            .update({ quantidade_aceita: item.quantidade_aceita })
+            .eq("id", item.item_id)
+            .eq("protocolo_id", data.id),
+        ),
+      );
+      const erroQuantidade = resultados.find((resultado) => resultado.error)?.error;
+      if (erroQuantidade) throw new Error(erroQuantidade.message);
+    }
 
     const { data: protocolo, error } = await context.supabase
       .from("protocolos")

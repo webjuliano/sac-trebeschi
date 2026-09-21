@@ -1,16 +1,16 @@
 # Portal de Devoluções Trebeschi — Roadmap
 
 ## Etapa 1 — Base e abertura de protocolo
-- [ ] Banco: protocolos, itens, fotos, histórico, lojas, perfis/roles
-- [ ] Storage de fotos com compressão no envio
-- [ ] Formulário público de abertura + número de protocolo
-- [ ] E-mail de confirmação ao cliente
+- [x] Banco: protocolos, itens, fotos, histórico, lojas, perfis/roles
+- [x] Storage de fotos com compressão no envio
+- [x] Formulário público de abertura + número de protocolo
+- [x] E-mail de confirmação registrado (envio aguarda domínio)
 
 ## Etapa 2 — Painel interno (fila)
-- [ ] Login da equipe Trebeschi
-- [ ] Fila com filtros (status, loja, data, motivo)
-- [ ] Tela do protocolo: dados, fotos, histórico, parecer
-- [ ] Decisão (aceito total/parcial/recusado) + e-mail automático
+- [x] Login e primeiro cadastro da equipe Trebeschi
+- [x] Fila com filtros (status e busca por protocolo/loja/solicitante)
+- [x] Tela do protocolo: dados, fotos, histórico, parecer
+- [x] Decisão (aceito total/parcial/recusado) + notificação registrada
 
 ## Etapa 3 — Sankhya
 - [ ] Serviço de integração no servidor (credenciais como segredo)
