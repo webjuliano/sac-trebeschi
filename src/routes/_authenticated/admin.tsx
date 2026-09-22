@@ -57,7 +57,8 @@ function AdminPage() {
 
   async function cadastrarLoja(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setSalvando(true);
     try {
       await salvarLoja({ data: {
@@ -67,7 +68,7 @@ function AdminPage() {
         email_contato: String(form.get("email_contato") || ""),
       } });
 
-      event.currentTarget.reset();
+      formElement.reset();
       toast.success("Loja cadastrada.");
       await carregar();
     } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível cadastrar a loja."); }
@@ -76,7 +77,8 @@ function AdminPage() {
 
   async function cadastrarUsuario(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setSalvando(true);
     try {
       const resultado = await salvarUsuario({ data: {
@@ -87,7 +89,7 @@ function AdminPage() {
         toast.error(resultado.mensagem);
         return;
       }
-      event.currentTarget.reset(); setRole("loja"); setLojasSelecionadas([]);
+      formElement.reset(); setRole("loja"); setLojasSelecionadas([]);
       toast.success("Usuário criado e acesso configurado.");
       await carregar();
     } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível criar o usuário."); }
