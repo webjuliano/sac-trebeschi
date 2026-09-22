@@ -197,7 +197,7 @@ export const definirStatusUsuario = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await exigirAdmin(context);
     if (data.user_id === context.userId && !data.ativo) {
-      return { ok: false as const, mensagem: "Você не pode inativar o seu próprio acesso." };
+      return { ok: false as const, mensagem: "Você não pode inativar o seu próprio acesso." };
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
