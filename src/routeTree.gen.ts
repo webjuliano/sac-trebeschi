@@ -13,10 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as AuthenticatedAnaliseRouteImport } from './routes/_authenticated/analise'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedNovaSolicitacaoRouteImport } from './routes/_authenticated/nova-solicitacao'
 import { Route as AuthenticatedSolicitacoesRouteImport } from './routes/_authenticated/solicitacoes'
+import { Route as AuthenticatedAnaliseIndexRouteImport } from './routes/_authenticated/analise.index'
 import { Route as AuthenticatedAnaliseIdRouteImport } from './routes/_authenticated/analise.$id'
 import { Route as AuthenticatedProtocolosIdRouteImport } from './routes/_authenticated/protocolos.$id'
 
@@ -39,11 +39,6 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAnaliseRoute = AuthenticatedAnaliseRouteImport.update({
-  id: '/analise',
-  path: '/analise',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -61,10 +56,16 @@ const AuthenticatedSolicitacoesRoute =
     path: '/solicitacoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAnaliseIndexRoute =
+  AuthenticatedAnaliseIndexRouteImport.update({
+    id: '/analise/',
+    path: '/analise/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAnaliseIdRoute = AuthenticatedAnaliseIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedAnaliseRoute,
+  id: '/analise/$id',
+  path: '/analise/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProtocolosIdRoute =
   AuthenticatedProtocolosIdRouteImport.update({
@@ -77,23 +78,23 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/analise': typeof AuthenticatedAnaliseRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/nova-solicitacao': typeof AuthenticatedNovaSolicitacaoRoute
   '/solicitacoes': typeof AuthenticatedSolicitacoesRoute
   '/analise/$id': typeof AuthenticatedAnaliseIdRoute
   '/protocolos/$id': typeof AuthenticatedProtocolosIdRoute
+  '/analise/': typeof AuthenticatedAnaliseIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/analise': typeof AuthenticatedAnaliseRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/nova-solicitacao': typeof AuthenticatedNovaSolicitacaoRoute
   '/solicitacoes': typeof AuthenticatedSolicitacoesRoute
   '/analise/$id': typeof AuthenticatedAnaliseIdRoute
   '/protocolos/$id': typeof AuthenticatedProtocolosIdRoute
+  '/analise': typeof AuthenticatedAnaliseIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -101,12 +102,12 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
-  '/_authenticated/analise': typeof AuthenticatedAnaliseRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/nova-solicitacao': typeof AuthenticatedNovaSolicitacaoRoute
   '/_authenticated/solicitacoes': typeof AuthenticatedSolicitacoesRoute
   '/_authenticated/analise/$id': typeof AuthenticatedAnaliseIdRoute
   '/_authenticated/protocolos/$id': typeof AuthenticatedProtocolosIdRoute
+  '/_authenticated/analise/': typeof AuthenticatedAnaliseIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -114,35 +115,35 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/admin'
-    | '/analise'
     | '/dashboard'
     | '/nova-solicitacao'
     | '/solicitacoes'
     | '/analise/$id'
     | '/protocolos/$id'
+    | '/analise/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/admin'
-    | '/analise'
     | '/dashboard'
     | '/nova-solicitacao'
     | '/solicitacoes'
     | '/analise/$id'
     | '/protocolos/$id'
+    | '/analise'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/admin'
-    | '/_authenticated/analise'
     | '/_authenticated/dashboard'
     | '/_authenticated/nova-solicitacao'
     | '/_authenticated/solicitacoes'
     | '/_authenticated/analise/$id'
     | '/_authenticated/protocolos/$id'
+    | '/_authenticated/analise/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -181,13 +182,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/analise': {
-      id: '/_authenticated/analise'
-      path: '/analise'
-      fullPath: '/analise'
-      preLoaderRoute: typeof AuthenticatedAnaliseRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -209,12 +203,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSolicitacoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/analise/': {
+      id: '/_authenticated/analise/'
+      path: '/analise'
+      fullPath: '/analise/'
+      preLoaderRoute: typeof AuthenticatedAnaliseIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/analise/$id': {
       id: '/_authenticated/analise/$id'
-      path: '/$id'
+      path: '/analise/$id'
       fullPath: '/analise/$id'
       preLoaderRoute: typeof AuthenticatedAnaliseIdRouteImport
-      parentRoute: typeof AuthenticatedAnaliseRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/protocolos/$id': {
       id: '/_authenticated/protocolos/$id'
@@ -226,33 +227,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedAnaliseRouteChildren {
-  AuthenticatedAnaliseIdRoute: typeof AuthenticatedAnaliseIdRoute
-}
-
-const AuthenticatedAnaliseRouteChildren: AuthenticatedAnaliseRouteChildren = {
-  AuthenticatedAnaliseIdRoute: AuthenticatedAnaliseIdRoute,
-}
-
-const AuthenticatedAnaliseRouteWithChildren =
-  AuthenticatedAnaliseRoute._addFileChildren(AuthenticatedAnaliseRouteChildren)
-
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
-  AuthenticatedAnaliseRoute: typeof AuthenticatedAnaliseRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedNovaSolicitacaoRoute: typeof AuthenticatedNovaSolicitacaoRoute
   AuthenticatedSolicitacoesRoute: typeof AuthenticatedSolicitacoesRoute
+  AuthenticatedAnaliseIdRoute: typeof AuthenticatedAnaliseIdRoute
   AuthenticatedProtocolosIdRoute: typeof AuthenticatedProtocolosIdRoute
+  AuthenticatedAnaliseIndexRoute: typeof AuthenticatedAnaliseIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
-  AuthenticatedAnaliseRoute: AuthenticatedAnaliseRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedNovaSolicitacaoRoute: AuthenticatedNovaSolicitacaoRoute,
   AuthenticatedSolicitacoesRoute: AuthenticatedSolicitacoesRoute,
+  AuthenticatedAnaliseIdRoute: AuthenticatedAnaliseIdRoute,
   AuthenticatedProtocolosIdRoute: AuthenticatedProtocolosIdRoute,
+  AuthenticatedAnaliseIndexRoute: AuthenticatedAnaliseIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
