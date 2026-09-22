@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { listarParaAnalise } from "@/lib/analise.functions";
 import { STATUS_CLASSE, STATUS_LABEL, dataHora, moeda } from "@/lib/protocolo-ui";
 
-export const Route = createFileRoute("/_authenticated/analise")({
+export const Route = createFileRoute("/_authenticated/analise/")({
   head: () => ({ meta: [
     { title: "Análise comercial | Trebeschi" },
     { name: "description", content: "Selecione uma solicitação para analisar vendas, devoluções e margem do cliente." },
