@@ -41,19 +41,23 @@ export type AnaliseComercial =
 type Credenciais = {
   url: string;
   token: string;
-  appkey: string;
-  usuario: string;
-  senha: string;
+  clientId: string;
+  clientSecret: string;
 };
+
+function normalizarUrl(bruto: string) {
+  let u = bruto.trim();
+  if (!u.startsWith("http://") && !u.startsWith("https://")) u = `https://${u}`;
+  return u.replace(/\/+$/, "").replace(/\/authenticate$/i, "").replace(/\/login$/i, "");
+}
 
 function lerCredenciais(): Credenciais | null {
   const token = process.env["SANKHYA_TOKEN"];
-  const appkey = process.env["SANKHYA_APPKEY"];
-  const usuario = process.env["SANKHYA_USUARIO"];
-  const senha = process.env["SANKHYA_SENHA"];
-  const url = process.env["SANKHYA_URL"] || "https://api.sankhya.com.br";
-  if (!token || !appkey || !usuario || !senha) return null;
-  return { url: url.replace(/\/+$/, ""), token, appkey, usuario, senha };
+  const clientId = process.env["SANKHYA_CLIENT_ID"];
+  const clientSecret = process.env["SANKHYA_CLIENT_SECRET"];
+  const url = process.env["SANKHYA_BASE_URL"] || "https://api.sankhya.com.br";
+  if (!token || !clientId || !clientSecret) return null;
+  return { url: normalizarUrl(url), token, clientId, clientSecret };
 }
 
 export function sankhyaConfigurado(): boolean {
@@ -70,35 +74,40 @@ async function comTempoLimite<T>(executar: (signal: AbortSignal) => Promise<T>):
   }
 }
 
-/** Autentica no gateway Sankhya Om e devolve o bearer token da sessão. */
+/** Autentica no gateway Sankhya e devolve o access token da sessão. */
 async function autenticar(cred: Credenciais): Promise<string> {
   return comTempoLimite(async (signal) => {
-    const resposta = await fetch(`${cred.url}/login`, {
+    const resposta = await fetch(`${cred.url}/authenticate`, {
       method: "POST",
       headers: {
-        token: cred.token,
-        appkey: cred.appkey,
-        username: cred.usuario,
-        password: cred.senha,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+        "X-Token": cred.token,
       },
+      body: new URLSearchParams({
+        client_id: cred.clientId,
+        client_secret: cred.clientSecret,
+        grant_type: "client_credentials",
+      }).toString(),
       signal,
     });
     const texto = await resposta.text();
     if (!resposta.ok) {
       throw new Error(`Sankhya recusou a autenticação (${resposta.status}).`);
     }
-    let json: { bearerToken?: string; error?: { descricao?: string } };
+    let json: { access_token?: string; error_description?: string };
     try {
       json = JSON.parse(texto) as typeof json;
     } catch {
       throw new Error("Resposta inesperada do Sankhya na autenticação.");
     }
-    if (!json.bearerToken) {
-      throw new Error(json.error?.descricao || "Não foi possível autenticar no Sankhya.");
+    if (!json.access_token) {
+      throw new Error(json.error_description || "Não foi possível autenticar no Sankhya.");
     }
-    return json.bearerToken;
+    return json.access_token;
   });
 }
+
 
 async function chamar(cred: Credenciais, bearer: string, serviceName: string, body: unknown) {
   const alvo = new URL(`${cred.url}/gateway/v1/mge/service.sbr`);
