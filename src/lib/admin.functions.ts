@@ -129,7 +129,13 @@ export const criarUsuario = createServerFn({ method: "POST" })
       email_confirm: true,
       user_metadata: { nome: data.nome },
     });
-    if (authError || !criado.user) throw new Error(authError?.message ?? "Não foi possível criar o usuário.");
+    if (authError || !criado.user) {
+      const mensagem = authError?.message ?? "";
+      if (/already been registered|already exists|already registered/i.test(mensagem)) {
+        throw new Error("Já existe um usuário com este e-mail. Ajuste as lojas dele na lista ao lado.");
+      }
+      throw new Error(mensagem || "Não foi possível criar o usuário.");
+    }
 
     const userId = criado.user.id;
     const { error: perfilError } = await supabaseAdmin
