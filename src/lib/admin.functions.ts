@@ -81,6 +81,7 @@ export const criarLoja = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.from("lojas").insert({
       nome: data.nome,
       codigo: data.codigo.toUpperCase(),
+      codigo_sankhya: data.codigo_sankhya,
       rede: data.rede || null,
       cnpj: data.cnpj || null,
       email_contato: data.email_contato || null,
@@ -88,6 +89,30 @@ export const criarLoja = createServerFn({ method: "POST" })
     if (error) throw new Error(error.code === "23505" ? "Já existe uma loja com este código." : error.message);
     return { ok: true };
   });
+
+/** Atualiza o código do cliente no Sankhya de uma loja já cadastrada. */
+export const atualizarCodigoSankhya = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({ loja_id: z.string().uuid(), codigo_sankhya: z.string().trim().max(40) })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await exigirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("lojas")
+      .update({ codigo_sankhya: data.codigo_sankhya || null })
+      .eq("id", data.loja_id);
+    if (error) {
+      throw new Error(
+        error.code === "23505" ? "Este código do Sankhya já está em outra loja." : error.message,
+      );
+    }
+    return { ok: true };
+  });
+
 
 export const criarUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
