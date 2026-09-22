@@ -177,15 +177,15 @@ export async function buscarAnaliseComercial(params: {
 
   const periodos: PeriodoComercial[] = [];
   for (const janela of janelas) {
-    const filtroData =
+    const filtroData = (alias: string) =>
       janela.meses === 0
-        ? "DTNEG >= TRUNC(SYSDATE, 'MM')"
-        : `DTNEG >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -${janela.meses})`;
+        ? `${alias}DTNEG >= TRUNC(SYSDATE, 'MM')`
+        : `${alias}DTNEG >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -${janela.meses})`;
     const linhas = await consultar(
       cred,
       sessao,
       `SELECT TIPMOV, SUM(VLRNOTA) FROM TGFCAB
-       WHERE CODPARC = '${codigo}' AND TIPMOV IN ('V','D') AND ${filtroData}
+       WHERE CODPARC = '${codigo}' AND TIPMOV IN ('V','D') AND ${filtroData("")}
        GROUP BY TIPMOV`,
     );
     const vendas = num(linhas.find((l) => l[0] === "V")?.[1]);
@@ -196,7 +196,8 @@ export async function buscarAnaliseComercial(params: {
       sessao,
       `SELECT SUM(I.VLRTOT), SUM(NVL(I.CUSMED, 0) * I.QTDNEG) FROM TGFITE I
        JOIN TGFCAB C ON C.NUNOTA = I.NUNOTA
-       WHERE C.CODPARC = '${codigo}' AND C.TIPMOV = 'V' AND C.${filtroData}`,
+       WHERE C.CODPARC = '${codigo}' AND C.TIPMOV = 'V' AND ${filtroData("C.")}`,
+
     ).catch(() => [] as string[][]);
     const receita = num(margemLinhas[0]?.[0]);
     const custo = num(margemLinhas[0]?.[1]);
