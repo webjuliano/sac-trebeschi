@@ -16,6 +16,8 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedNovaSolicitacaoRouteImport } from './routes/_authenticated/nova-solicitacao'
 import { Route as AuthenticatedSolicitacoesRouteImport } from './routes/_authenticated/solicitacoes'
+import { Route as AuthenticatedAnaliseIndexRouteImport } from './routes/_authenticated/analise.index'
+import { Route as AuthenticatedAnaliseIdRouteImport } from './routes/_authenticated/analise.$id'
 import { Route as AuthenticatedProtocolosIdRouteImport } from './routes/_authenticated/protocolos.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -54,6 +56,17 @@ const AuthenticatedSolicitacoesRoute =
     path: '/solicitacoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAnaliseIndexRoute =
+  AuthenticatedAnaliseIndexRouteImport.update({
+    id: '/analise/',
+    path: '/analise/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnaliseIdRoute = AuthenticatedAnaliseIdRouteImport.update({
+  id: '/analise/$id',
+  path: '/analise/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProtocolosIdRoute =
   AuthenticatedProtocolosIdRouteImport.update({
     id: '/protocolos/$id',
@@ -68,7 +81,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/nova-solicitacao': typeof AuthenticatedNovaSolicitacaoRoute
   '/solicitacoes': typeof AuthenticatedSolicitacoesRoute
+  '/analise/$id': typeof AuthenticatedAnaliseIdRoute
   '/protocolos/$id': typeof AuthenticatedProtocolosIdRoute
+  '/analise/': typeof AuthenticatedAnaliseIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -77,7 +92,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/nova-solicitacao': typeof AuthenticatedNovaSolicitacaoRoute
   '/solicitacoes': typeof AuthenticatedSolicitacoesRoute
+  '/analise/$id': typeof AuthenticatedAnaliseIdRoute
   '/protocolos/$id': typeof AuthenticatedProtocolosIdRoute
+  '/analise': typeof AuthenticatedAnaliseIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -88,7 +105,9 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/nova-solicitacao': typeof AuthenticatedNovaSolicitacaoRoute
   '/_authenticated/solicitacoes': typeof AuthenticatedSolicitacoesRoute
+  '/_authenticated/analise/$id': typeof AuthenticatedAnaliseIdRoute
   '/_authenticated/protocolos/$id': typeof AuthenticatedProtocolosIdRoute
+  '/_authenticated/analise/': typeof AuthenticatedAnaliseIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -99,7 +118,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/nova-solicitacao'
     | '/solicitacoes'
+    | '/analise/$id'
     | '/protocolos/$id'
+    | '/analise/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -108,7 +129,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/nova-solicitacao'
     | '/solicitacoes'
+    | '/analise/$id'
     | '/protocolos/$id'
+    | '/analise'
   id:
     | '__root__'
     | '/'
@@ -118,7 +141,9 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/nova-solicitacao'
     | '/_authenticated/solicitacoes'
+    | '/_authenticated/analise/$id'
     | '/_authenticated/protocolos/$id'
+    | '/_authenticated/analise/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -178,6 +203,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSolicitacoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/analise/': {
+      id: '/_authenticated/analise/'
+      path: '/analise'
+      fullPath: '/analise/'
+      preLoaderRoute: typeof AuthenticatedAnaliseIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analise/$id': {
+      id: '/_authenticated/analise/$id'
+      path: '/analise/$id'
+      fullPath: '/analise/$id'
+      preLoaderRoute: typeof AuthenticatedAnaliseIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/protocolos/$id': {
       id: '/_authenticated/protocolos/$id'
       path: '/protocolos/$id'
@@ -193,7 +232,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedNovaSolicitacaoRoute: typeof AuthenticatedNovaSolicitacaoRoute
   AuthenticatedSolicitacoesRoute: typeof AuthenticatedSolicitacoesRoute
+  AuthenticatedAnaliseIdRoute: typeof AuthenticatedAnaliseIdRoute
   AuthenticatedProtocolosIdRoute: typeof AuthenticatedProtocolosIdRoute
+  AuthenticatedAnaliseIndexRoute: typeof AuthenticatedAnaliseIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -201,7 +242,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedNovaSolicitacaoRoute: AuthenticatedNovaSolicitacaoRoute,
   AuthenticatedSolicitacoesRoute: AuthenticatedSolicitacoesRoute,
+  AuthenticatedAnaliseIdRoute: AuthenticatedAnaliseIdRoute,
   AuthenticatedProtocolosIdRoute: AuthenticatedProtocolosIdRoute,
+  AuthenticatedAnaliseIndexRoute: AuthenticatedAnaliseIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

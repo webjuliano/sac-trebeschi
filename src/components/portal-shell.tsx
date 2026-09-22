@@ -5,6 +5,8 @@ import {
   ClipboardList,
   KeyRound,
   LayoutDashboard,
+  LineChart,
+
   Leaf,
   Loader2,
   LogOut,
@@ -42,13 +44,20 @@ export function PortalShell({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const consultarAcesso = useServerFn(obterMeuAcesso);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isEquipe, setIsEquipe] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
   const [senhaAberta, setSenhaAberta] = useState(false);
   const [salvandoSenha, setSalvandoSenha] = useState(false);
 
   useEffect(() => {
-    consultarAcesso().then((acesso) => setIsAdmin(acesso.isAdmin)).catch(() => setIsAdmin(false));
+    consultarAcesso()
+      .then((acesso) => {
+        setIsAdmin(acesso.isAdmin);
+        setIsEquipe(acesso.roles.includes("admin") || acesso.roles.includes("analista"));
+      })
+      .catch(() => { setIsAdmin(false); setIsEquipe(false); });
   }, [consultarAcesso]);
+
 
   async function sair() {
     await queryClient.cancelQueries();
@@ -78,7 +87,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
     toast.success("Senha alterada com sucesso.");
   }
 
-  const navigation = <Navigation isAdmin={isAdmin} onNavigate={() => setMenuAberto(false)} onPassword={() => setSenhaAberta(true)} onLogout={sair} />;
+  const navigation = <Navigation isAdmin={isAdmin} isEquipe={isEquipe} onNavigate={() => setMenuAberto(false)} onPassword={() => setSenhaAberta(true)} onLogout={sair} />;
 
   return (
     <div className="min-h-screen bg-muted/25 lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
@@ -113,7 +122,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
   );
 }
 
-function Navigation({ isAdmin, onNavigate, onPassword, onLogout }: { isAdmin: boolean; onNavigate: () => void; onPassword: () => void; onLogout: () => void }) {
+function Navigation({ isAdmin, isEquipe, onNavigate, onPassword, onLogout }: { isAdmin: boolean; isEquipe: boolean; onNavigate: () => void; onPassword: () => void; onLogout: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <Link to="/dashboard" onClick={onNavigate} className="flex h-20 items-center gap-3 border-b px-5">
@@ -123,8 +132,10 @@ function Navigation({ isAdmin, onNavigate, onPassword, onLogout }: { isAdmin: bo
       <nav className="flex-1 space-y-1 p-3">
         <p className="px-3 pb-2 pt-3 text-xs font-semibold uppercase text-muted-foreground">Menu</p>
         {links.map(({ to, label, icon: Icon }) => <Link key={to} to={to} onClick={onNavigate} activeOptions={{ exact: true }} className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" activeProps={{ className: "bg-primary/10 text-primary" }}><Icon className="size-4" />{label}</Link>)}
+        {isEquipe && <Link to="/analise" onClick={onNavigate} className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" activeProps={{ className: "bg-primary/10 text-primary" }}><LineChart className="size-4" />Análise</Link>}
         {isAdmin && <Link to="/admin" onClick={onNavigate} className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" activeProps={{ className: "bg-primary/10 text-primary" }}><Settings className="size-4" />Administração</Link>}
       </nav>
+
       <div className="space-y-1 border-t p-3">
         <Button variant="ghost" className={cn("w-full justify-start text-muted-foreground")} onClick={onPassword}><KeyRound /> Alterar senha</Button>
         <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={onLogout}><LogOut /> Sair</Button>

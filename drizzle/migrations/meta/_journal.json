@@ -36,6 +36,13 @@
       "when": 1790015464601,
       "tag": "0004_add_user_store_access",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790099225416,
+      "tag": "0005_add_codigo_sankhya_e_cache",
+      "breakpoints": true
     }
   ]
 }
