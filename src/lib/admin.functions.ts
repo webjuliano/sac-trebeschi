@@ -132,9 +132,12 @@ export const criarUsuario = createServerFn({ method: "POST" })
     if (authError || !criado.user) {
       const mensagem = authError?.message ?? "";
       if (/already been registered|already exists|already registered/i.test(mensagem)) {
-        throw new Error("Já existe um usuário com este e-mail. Ajuste as lojas dele na lista ao lado.");
+        return {
+          ok: false as const,
+          mensagem: "Já existe um usuário com este e-mail. Ajuste as lojas dele na lista ao lado.",
+        };
       }
-      throw new Error(mensagem || "Não foi possível criar o usuário.");
+      return { ok: false as const, mensagem: mensagem || "Não foi possível criar o usuário." };
     }
 
     const userId = criado.user.id;
@@ -153,9 +156,9 @@ export const criarUsuario = createServerFn({ method: "POST" })
     const erro = perfilError ?? papelError ?? vinculoError;
     if (erro) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      throw new Error(erro.message);
+      return { ok: false as const, mensagem: erro.message };
     }
-    return { ok: true };
+    return { ok: true as const, mensagem: "" };
   });
 
 export const atualizarVinculosUsuario = createServerFn({ method: "POST" })
