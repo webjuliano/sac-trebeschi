@@ -58,9 +58,11 @@ function AdminPage() {
     try {
       await salvarLoja({ data: {
         nome: String(form.get("nome")), codigo: String(form.get("codigo")),
+        codigo_sankhya: String(form.get("codigo_sankhya")),
         rede: String(form.get("rede") || ""), cnpj: String(form.get("cnpj") || ""),
         email_contato: String(form.get("email_contato") || ""),
       } });
+
       event.currentTarget.reset();
       toast.success("Loja cadastrada.");
       await carregar();
