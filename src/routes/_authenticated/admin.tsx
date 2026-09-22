@@ -41,6 +41,8 @@ function AdminPage() {
 
   const salvarUsuario = useServerFn(criarUsuario);
   const salvarVinculos = useServerFn(atualizarVinculosUsuario);
+  const mudarStatus = useServerFn(definirStatusUsuario);
+  const removerUsuario = useServerFn(excluirUsuario);
   const [dados, setDados] = useState<DadosAdmin | null>(null);
   const [aba, setAba] = useState<"usuarios" | "lojas">("usuarios");
   const [role, setRole] = useState<"admin" | "analista" | "loja">("loja");
