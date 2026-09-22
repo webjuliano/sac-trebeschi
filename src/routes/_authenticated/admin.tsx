@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  atualizarCodigoSankhya,
   atualizarVinculosUsuario,
   criarLoja,
   criarUsuario,
   listarAdministracao,
 } from "@/lib/admin.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [
@@ -33,6 +35,8 @@ function AdminPage() {
   const navigate = useNavigate();
   const listar = useServerFn(listarAdministracao);
   const salvarLoja = useServerFn(criarLoja);
+  const salvarCodigoSankhya = useServerFn(atualizarCodigoSankhya);
+
   const salvarUsuario = useServerFn(criarUsuario);
   const salvarVinculos = useServerFn(atualizarVinculosUsuario);
   const [dados, setDados] = useState<DadosAdmin | null>(null);
