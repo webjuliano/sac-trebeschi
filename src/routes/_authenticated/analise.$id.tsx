@@ -205,8 +205,14 @@ function AnaliseDetalhePage() {
                     ))}
                   </tbody>
                 </table>
-                <div className="flex justify-end border-t bg-muted/30 p-4 text-sm">
-                  <span className="mr-4 text-muted-foreground">Valor aceito</span><strong>{moeda(valorAceito)}</strong>
+                <div className="flex flex-wrap justify-end gap-x-8 gap-y-2 border-t bg-muted/30 p-4 text-sm">
+                  <span><span className="mr-3 text-muted-foreground">Valor aceito</span><strong>{moeda(valorAceito)}</strong></span>
+                  {comercial?.analise.configurado && comercial.analise.nota && Number(comercial.analise.nota.valor_total) > 0 && (
+                    <span>
+                      <span className="mr-3 text-muted-foreground">% da nota de venda</span>
+                      <strong>{pct((valorAceito / Number(comercial.analise.nota.valor_total)) * 100)}</strong>
+                    </span>
+                  )}
                 </div>
               </div>
             </section>
