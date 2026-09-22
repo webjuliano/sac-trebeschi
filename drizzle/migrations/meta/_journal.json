@@ -43,6 +43,13 @@
       "when": 1790099225416,
       "tag": "0005_add_codigo_sankhya_e_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790107520249,
+      "tag": "0006_add_profiles_ativo",
+      "breakpoints": true
     }
   ]
 }
