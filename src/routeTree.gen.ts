@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedNovaSolicitacaoRouteImport } from './routes/_authenticated/nova-solicitacao'
 import { Route as AuthenticatedProtocolosIdRouteImport } from './routes/_authenticated/protocolos.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -40,6 +41,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedNovaSolicitacaoRoute =
+  AuthenticatedNovaSolicitacaoRouteImport.update({
+    id: '/nova-solicitacao',
+    path: '/nova-solicitacao',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProtocolosIdRoute =
   AuthenticatedProtocolosIdRouteImport.update({
     id: '/protocolos/$id',
@@ -52,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/nova-solicitacao': typeof AuthenticatedNovaSolicitacaoRoute
   '/protocolos/$id': typeof AuthenticatedProtocolosIdRoute
 }
 export interface FileRoutesByTo {
@@ -59,6 +67,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/nova-solicitacao': typeof AuthenticatedNovaSolicitacaoRoute
   '/protocolos/$id': typeof AuthenticatedProtocolosIdRoute
 }
 export interface FileRoutesById {
@@ -68,13 +77,26 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/nova-solicitacao': typeof AuthenticatedNovaSolicitacaoRoute
   '/_authenticated/protocolos/$id': typeof AuthenticatedProtocolosIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/admin' | '/dashboard' | '/protocolos/$id'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/dashboard'
+    | '/nova-solicitacao'
+    | '/protocolos/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/admin' | '/dashboard' | '/protocolos/$id'
+  to:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/dashboard'
+    | '/nova-solicitacao'
+    | '/protocolos/$id'
   id:
     | '__root__'
     | '/'
@@ -82,6 +104,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/nova-solicitacao'
     | '/_authenticated/protocolos/$id'
   fileRoutesById: FileRoutesById
 }
@@ -128,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/nova-solicitacao': {
+      id: '/_authenticated/nova-solicitacao'
+      path: '/nova-solicitacao'
+      fullPath: '/nova-solicitacao'
+      preLoaderRoute: typeof AuthenticatedNovaSolicitacaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/protocolos/$id': {
       id: '/_authenticated/protocolos/$id'
       path: '/protocolos/$id'
@@ -141,12 +171,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedNovaSolicitacaoRoute: typeof AuthenticatedNovaSolicitacaoRoute
   AuthenticatedProtocolosIdRoute: typeof AuthenticatedProtocolosIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedNovaSolicitacaoRoute: AuthenticatedNovaSolicitacaoRoute,
   AuthenticatedProtocolosIdRoute: AuthenticatedProtocolosIdRoute,
 }
 

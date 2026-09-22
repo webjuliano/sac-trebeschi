@@ -42,22 +42,29 @@ function decodeBase64(base64: string): Uint8Array {
   return bytes;
 }
 
-/** Lista pública das lojas cadastradas (usada no formulário de abertura). */
-export const listarLojas = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
+/** Lista somente as lojas que o usuário autenticado pode usar. */
+export const listarLojasPermitidas = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+  const { data, error } = await context.supabase
     .from("lojas")
     .select("id, nome, codigo, rede")
     .eq("ativa", true)
     .order("nome");
   if (error) throw new Error(error.message);
   return data ?? [];
-});
+  });
 
 /** Abertura de protocolo pela loja (formulário público). */
 export const abrirProtocolo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => aberturaSchema.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const [{ data: equipe }, { data: acesso }] = await Promise.all([
+      context.supabase.rpc("is_equipe", { _user_id: context.userId }),
+      context.supabase.rpc("usuario_tem_acesso_loja", { _user_id: context.userId, _loja_id: data.loja_id }),
+    ]);
+    if (!equipe && !acesso) throw new Error("Você não possui acesso a esta loja.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: loja, error: lojaError } = await supabaseAdmin
