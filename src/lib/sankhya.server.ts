@@ -188,9 +188,13 @@ export async function buscarAnaliseComercial(params: {
     const cabecalho = await consultar(
       cred,
       sessao,
-      `SELECT NUNOTA, NUMNOTA, DTNEG, VLRNOTA FROM TGFCAB
-       WHERE CODPARC = '${codigo}' AND NUMNOTA = '${numeroNota}' AND TIPMOV = 'V'`,
+      `SELECT * FROM (
+         SELECT NUNOTA, NUMNOTA, TO_CHAR(DTNEG, 'YYYY-MM-DD') AS DATA, VLRNOTA FROM TGFCAB
+         WHERE CODPARC = '${codigo}' AND NUMNOTA = '${numeroNota}' AND TIPMOV = 'V'
+         ORDER BY DTNEG DESC
+       ) WHERE ROWNUM <= 1`,
     );
+
     const linha = cabecalho[0];
     if (linha) {
       const itens = await consultar(
@@ -240,13 +244,18 @@ export async function buscarAnaliseComercial(params: {
     const margemLinhas = await consultar(
       cred,
       sessao,
-      `SELECT SUM(I.VLRTOT), SUM(NVL(I.CUSMED, 0) * I.QTDNEG) FROM TGFITE I
+      `SELECT SUM(I.VLRTOT), SUM(I.QTDNEG * NVL(CU.CUSMED, 0))
+       FROM TGFITE I
        JOIN TGFCAB C ON C.NUNOTA = I.NUNOTA
+       LEFT JOIN (
+         SELECT CODPROD, MAX(CUSMED) KEEP (DENSE_RANK LAST ORDER BY DTATUAL) CUSMED
+         FROM TGFCUS GROUP BY CODPROD
+       ) CU ON CU.CODPROD = I.CODPROD
        WHERE C.CODPARC = '${codigo}' AND C.TIPMOV = 'V' AND ${filtroData("C.")}`,
-
     ).catch(() => [] as string[][]);
     const receita = num(margemLinhas[0]?.[0]);
     const custo = num(margemLinhas[0]?.[1]);
+
 
     periodos.push({
       rotulo: janela.rotulo,
