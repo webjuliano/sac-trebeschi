@@ -106,6 +106,25 @@ function AdminPage() {
     </main></div>;
 }
 
+function LinhaLoja({ loja, salvar }: { loja: DadosAdmin["lojas"][number]; salvar: (codigo: string) => Promise<void> }) {
+  const [codigo, setCodigo] = useState(loja.codigo_sankhya ?? "");
+  const alterado = codigo !== (loja.codigo_sankhya ?? "");
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 border-b p-4 last:border-0">
+      <div className="min-w-[200px]">
+        <strong className="text-sm">{loja.nome}</strong>
+        <p className="mt-1 text-xs text-muted-foreground">{loja.rede || "Sem rede"} · {loja.codigo}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Label className="text-xs text-muted-foreground" htmlFor={`sankhya-${loja.id}`}>Código Sankhya</Label>
+        <Input id={`sankhya-${loja.id}`} className="w-28" value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="—" />
+        <Button variant="outline" size="sm" disabled={!alterado} onClick={() => salvar(codigo.trim())}>Salvar</Button>
+      </div>
+      <span className={loja.ativa ? "text-xs font-semibold text-primary" : "text-xs text-muted-foreground"}>{loja.ativa ? "Ativa" : "Inativa"}</span>
+    </div>
+  );
+}
+
 function Campo({ label, children }: { label: string; children: React.ReactNode }) { return <div><Label className="mb-2 block">{label}</Label>{children}</div>; }
 function SelecaoLojas({ lojas, selecionadas, onChange }: { lojas: DadosAdmin["lojas"]; selecionadas: string[]; onChange: (ids: string[]) => void }) { return <fieldset><legend className="mb-2 text-sm font-medium">Lojas permitidas</legend><div className="max-h-52 space-y-1 overflow-y-auto border p-2">{lojas.map((loja) => <label key={loja.id} className="flex cursor-pointer items-center gap-3 p-2 text-sm hover:bg-accent"><input type="checkbox" className="size-4 accent-primary" checked={selecionadas.includes(loja.id)} onChange={(e) => onChange(e.target.checked ? [...selecionadas, loja.id] : selecionadas.filter((id) => id !== loja.id))} /><span>{loja.rede ? `${loja.rede} — ` : ""}{loja.nome}</span></label>)}</div></fieldset>; }
 function Usuario({ usuario, lojas, salvar }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; salvar: (ids: string[]) => Promise<void> }) { const [ids, setIds] = useState(usuario.loja_ids); const perfil = usuario.roles.includes("admin") ? "Administrador" : usuario.roles.includes("analista") ? "Analista" : "Usuário de loja"; const editavel = usuario.roles.includes("loja"); return <div className="border bg-card p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{usuario.nome || "Sem nome"}</strong><p className="mt-1 text-sm text-muted-foreground">{usuario.email}</p></div><span className="rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">{perfil}</span></div>{editavel && <div className="mt-4"><SelecaoLojas lojas={lojas} selecionadas={ids} onChange={setIds} /><Button variant="outline" size="sm" className="mt-3" onClick={() => salvar(ids)}>Salvar lojas</Button></div>}</div>; }
