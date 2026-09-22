@@ -22,8 +22,11 @@
 - [x] Restrição de protocolos conforme as lojas vinculadas
 
 ## Etapa 3 — Sankhya
-- [ ] Serviço de integração no servidor (credenciais como segredo)
-- [ ] Indicadores do cliente na tela de análise (margem, % devolução)
+- [x] Serviço de integração no servidor (autenticação /authenticate com X-Token + client_id/secret)
+- [ ] Cadastrar as credenciais (SANKHYA_TOKEN, SANKHYA_CLIENT_ID, SANKHYA_CLIENT_SECRET)
+- [ ] Testar a conexão real e validar as consultas (nota, vendas, devoluções, margem)
+- [x] Indicadores do cliente na tela de análise (margem, % devolução)
+
 
 ## Etapa 4 — Fechamento e indicadores
 - [ ] Anexo de NF de devolução e confirmação de coleta/canhoto
