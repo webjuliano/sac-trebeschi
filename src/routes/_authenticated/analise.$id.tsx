@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Package, ReceiptText, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Package, Pencil, ReceiptText, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalShell } from "@/components/portal-shell";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { obterAnaliseComercial, registrarSnapshotAnalise } from "@/lib/analise.functions";
+import { corrigirDadosVenda, obterAnaliseComercial, registrarSnapshotAnalise } from "@/lib/analise.functions";
 import { obterProtocolo, registrarDecisao } from "@/lib/protocolos.functions";
 import { STATUS_CLASSE, STATUS_LABEL, STATUS_OPCOES, data as formatarData, dataHora, moeda } from "@/lib/protocolo-ui";
 
@@ -34,6 +34,8 @@ function AnaliseDetalhePage() {
   const obterComercial = useServerFn(obterAnaliseComercial);
   const decidir = useServerFn(registrarDecisao);
   const gravarSnapshot = useServerFn(registrarSnapshotAnalise);
+  const corrigir = useServerFn(corrigirDadosVenda);
+
 
   const [dados, setDados] = useState<Awaited<ReturnType<typeof obterProtocolo>> | null>(null);
   const [comercial, setComercial] = useState<Awaited<ReturnType<typeof obterAnaliseComercial>> | null>(null);
@@ -42,6 +44,9 @@ function AnaliseDetalhePage() {
   const [parecer, setParecer] = useState("");
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
   const [salvando, setSalvando] = useState(false);
+  const [notaEdit, setNotaEdit] = useState("");
+  const [dataCompraEdit, setDataCompraEdit] = useState("");
+  const [corrigindo, setCorrigindo] = useState(false);
 
   async function carregar() {
     try {
@@ -49,21 +54,48 @@ function AnaliseDetalhePage() {
       setDados(retorno);
       setStatus(retorno.protocolo.status === "aberto" ? "aceito_parcial" : retorno.protocolo.status);
       setParecer(retorno.protocolo.parecer ?? "");
+      setNotaEdit(retorno.protocolo.nota_fiscal ?? "");
+      setDataCompraEdit(retorno.protocolo.data_compra ?? "");
       setQuantidades(Object.fromEntries(retorno.itens.map((item) => [item.id, Number(item.quantidade_aceita ?? item.quantidade)])));
     } catch {
       toast.error("Não foi possível carregar esta solicitação.");
     }
   }
 
+  async function carregarComercial() {
+    setCarregandoComercial(true);
+    try {
+      setComercial(await obterComercial({ data: { protocolo_id: id } }));
+    } catch {
+      setComercial(null);
+    } finally {
+      setCarregandoComercial(false);
+    }
+  }
+
   useEffect(() => { void carregar(); }, [id]);
 
-  useEffect(() => {
-    setCarregandoComercial(true);
-    obterComercial({ data: { protocolo_id: id } })
-      .then(setComercial)
-      .catch(() => setComercial(null))
-      .finally(() => setCarregandoComercial(false));
-  }, [id, obterComercial]);
+  useEffect(() => { void carregarComercial(); }, [id]);
+
+  async function corrigirVenda(event: FormEvent) {
+    event.preventDefault();
+    setCorrigindo(true);
+    try {
+      await corrigir({ data: {
+        protocolo_id: id,
+        nota_fiscal: notaEdit.trim() || null,
+        data_compra: dataCompraEdit || null,
+      } });
+      toast.success("Dados da venda corrigidos.");
+      await carregar();
+      await carregarComercial();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível corrigir os dados da venda.");
+    } finally {
+      setCorrigindo(false);
+    }
+  }
+
 
   const valorAceito = useMemo(
     () => dados?.itens.reduce((soma, item) => soma + (quantidades[item.id] ?? 0) * Number(item.valor_unitario), 0) ?? 0,
@@ -130,7 +162,28 @@ function AnaliseDetalhePage() {
         <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="space-y-8">
             <section>
+              <Titulo icon={<Pencil />} texto="Dados da venda informados pela loja" />
+              <form onSubmit={corrigirVenda} className="mt-4 flex flex-wrap items-end gap-4 border bg-card p-5">
+                <div className="min-w-[180px]">
+                  <Label className="mb-2 block" htmlFor="nota-venda">Número da nota de venda</Label>
+                  <Input id="nota-venda" value={notaEdit} onChange={(e) => setNotaEdit(e.target.value)} placeholder="Ex.: 173985" />
+                </div>
+                <div className="min-w-[180px]">
+                  <Label className="mb-2 block" htmlFor="data-compra">Data da compra</Label>
+                  <Input id="data-compra" type="date" value={dataCompraEdit} onChange={(e) => setDataCompraEdit(e.target.value)} />
+                </div>
+                <Button type="submit" variant="secondary" disabled={corrigindo}>
+                  {corrigindo ? <Loader2 className="animate-spin" /> : <Pencil />} Corrigir e consultar novamente
+                </Button>
+                <p className="w-full text-xs text-muted-foreground">
+                  Corrija quando a loja informar a nota ou a data erradas. A consulta ao Sankhya é refeita e a alteração fica registrada no histórico.
+                </p>
+              </form>
+            </section>
+
+            <section>
               <Titulo icon={<Package />} texto="Itens solicitados pela loja" />
+
               <div className="mt-4 overflow-x-auto border bg-card">
                 <table className="w-full min-w-[720px] text-sm">
                   <thead className="border-b bg-muted/60 text-left text-xs uppercase text-muted-foreground">
