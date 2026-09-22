@@ -4,9 +4,9 @@ import { useEffect } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
-    { title: "Portal de devoluções | Trebeschi" },
+    { title: "Portal de atendimento | Trebeschi" },
     { name: "description", content: "Acesse o portal de solicitações de devolução Trebeschi." },
-    { property: "og:title", content: "Portal de devoluções | Trebeschi" },
+    { property: "og:title", content: "Portal de atendimento | Trebeschi" },
     { property: "og:description", content: "Acesse o portal de solicitações de devolução Trebeschi." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },

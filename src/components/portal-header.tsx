@@ -55,7 +55,7 @@ export function PortalHeader({ interno = false }: { interno?: boolean }) {
           </span>
           <span>
             <strong className="block text-base leading-none">Trebeschi</strong>
-            <span className="text-xs text-muted-foreground">Portal de devoluções</span>
+            <span className="text-xs text-muted-foreground">Portal de atendimento</span>
           </span>
         </Link>
         {interno ? (

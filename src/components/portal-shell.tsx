@@ -127,7 +127,7 @@ function Navigation({ isAdmin, isEquipe, onNavigate, onPassword, onLogout }: { i
     <div className="flex h-full flex-col">
       <Link to="/dashboard" onClick={onNavigate} className="flex h-20 items-center gap-3 border-b px-5">
         <span className="flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><Leaf className="size-5" /></span>
-        <span><strong className="block leading-none">Trebeschi</strong><span className="mt-1 block text-xs text-muted-foreground">Portal de devoluções</span></span>
+        <span><strong className="block leading-none">Trebeschi</strong><span className="mt-1 block text-xs text-muted-foreground">Portal de atendimento</span></span>
       </Link>
       <nav className="flex-1 space-y-1 p-3">
         <p className="px-3 pb-2 pt-3 text-xs font-semibold uppercase text-muted-foreground">Menu</p>
