@@ -205,8 +205,14 @@ function AnaliseDetalhePage() {
                     ))}
                   </tbody>
                 </table>
-                <div className="flex justify-end border-t bg-muted/30 p-4 text-sm">
-                  <span className="mr-4 text-muted-foreground">Valor aceito</span><strong>{moeda(valorAceito)}</strong>
+                <div className="flex flex-wrap justify-end gap-x-8 gap-y-2 border-t bg-muted/30 p-4 text-sm">
+                  <span><span className="mr-3 text-muted-foreground">Valor aceito</span><strong>{moeda(valorAceito)}</strong></span>
+                  {comercial?.analise.configurado && comercial.analise.nota && Number(comercial.analise.nota.valor_total) > 0 && (
+                    <span>
+                      <span className="mr-3 text-muted-foreground">% da nota de venda</span>
+                      <strong>{pct((valorAceito / Number(comercial.analise.nota.valor_total)) * 100)}</strong>
+                    </span>
+                  )}
                 </div>
               </div>
             </section>
@@ -270,6 +276,25 @@ function AnaliseDetalhePage() {
                         <div className="flex items-center justify-between p-3">
                           <span>{comercial.analise.nota.numero} · {formatarData(comercial.analise.nota.data_emissao)}</span>
                           <strong>{moeda(comercial.analise.nota.valor_total)}</strong>
+                        </div>
+                        <div className="space-y-1 bg-muted/30 p-3 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Valor aceito para devolução</span>
+                            <strong>{moeda(valorAceito)}</strong>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">% da nota de venda</span>
+                            {(() => {
+                              const total = Number(comercial.analise.nota.valor_total);
+                              const percentual = total > 0 ? (valorAceito / total) * 100 : null;
+                              const acima = percentual != null && percentual > limite;
+                              return (
+                                <span className={`rounded-full px-2 py-0.5 font-semibold ${acima ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
+                                  {pct(percentual)}
+                                </span>
+                              );
+                            })()}
+                          </div>
                         </div>
                         {comercial.analise.nota.itens.map((item, index) => (
                           <div key={`${item.codigo}-${index}`} className="flex items-center justify-between gap-3 p-3 text-xs">
