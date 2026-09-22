@@ -38,35 +38,81 @@ export type AnaliseComercial =
       consultado_em: string;
     };
 
-type Credenciais = { url: string; usuario: string; senha: string };
+type Credenciais = {
+  url: string;
+  token: string;
+  appkey: string;
+  usuario: string;
+  senha: string;
+};
 
 function lerCredenciais(): Credenciais | null {
-  const url = process.env["SANKHYA_URL"];
+  const token = process.env["SANKHYA_TOKEN"];
+  const appkey = process.env["SANKHYA_APPKEY"];
   const usuario = process.env["SANKHYA_USUARIO"];
   const senha = process.env["SANKHYA_SENHA"];
-  if (!url || !usuario || !senha) return null;
-  return { url: url.replace(/\/+$/, ""), usuario, senha };
+  const url = process.env["SANKHYA_URL"] || "https://api.sankhya.com.br";
+  if (!token || !appkey || !usuario || !senha) return null;
+  return { url: url.replace(/\/+$/, ""), token, appkey, usuario, senha };
 }
 
 export function sankhyaConfigurado(): boolean {
   return lerCredenciais() !== null;
 }
 
-async function chamar(cred: Credenciais, serviceName: string, body: unknown, jsessionid?: string) {
-  const alvo = new URL(`${cred.url}/mge/service.sbr`);
+async function comTempoLimite<T>(executar: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25_000);
+  try {
+    return await executar(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Autentica no gateway Sankhya Om e devolve o bearer token da sessão. */
+async function autenticar(cred: Credenciais): Promise<string> {
+  return comTempoLimite(async (signal) => {
+    const resposta = await fetch(`${cred.url}/login`, {
+      method: "POST",
+      headers: {
+        token: cred.token,
+        appkey: cred.appkey,
+        username: cred.usuario,
+        password: cred.senha,
+      },
+      signal,
+    });
+    const texto = await resposta.text();
+    if (!resposta.ok) {
+      throw new Error(`Sankhya recusou a autenticação (${resposta.status}).`);
+    }
+    let json: { bearerToken?: string; error?: { descricao?: string } };
+    try {
+      json = JSON.parse(texto) as typeof json;
+    } catch {
+      throw new Error("Resposta inesperada do Sankhya na autenticação.");
+    }
+    if (!json.bearerToken) {
+      throw new Error(json.error?.descricao || "Não foi possível autenticar no Sankhya.");
+    }
+    return json.bearerToken;
+  });
+}
+
+async function chamar(cred: Credenciais, bearer: string, serviceName: string, body: unknown) {
+  const alvo = new URL(`${cred.url}/gateway/v1/mge/service.sbr`);
   alvo.searchParams.set("serviceName", serviceName);
   alvo.searchParams.set("outputType", "json");
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20_000);
-  try {
+  return comTempoLimite(async (signal) => {
     const resposta = await fetch(alvo.toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(jsessionid ? { Cookie: `JSESSIONID=${jsessionid}` } : {}),
+        Authorization: `Bearer ${bearer}`,
       },
       body: JSON.stringify({ serviceName, requestBody: body }),
-      signal: controller.signal,
+      signal,
     });
     if (!resposta.ok) throw new Error(`Sankhya respondeu ${resposta.status}`);
     const json = (await resposta.json()) as {
@@ -75,31 +121,22 @@ async function chamar(cred: Credenciais, serviceName: string, body: unknown, jse
       responseBody?: Record<string, unknown>;
     };
     if (json.status && json.status !== "1") {
-      throw new Error(json.statusMessage || "Falha na consulta ao Sankhya.");
+      const mensagem = json.statusMessage
+        ? decodeURIComponent(json.statusMessage.replace(/\+/g, " "))
+        : "Falha na consulta ao Sankhya.";
+      throw new Error(mensagem);
     }
     return json.responseBody ?? {};
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function autenticar(cred: Credenciais): Promise<string> {
-  const corpo = await chamar(cred, "MobileLoginSP.login", {
-    NOMUSU: { $: cred.usuario },
-    INTERNO: { $: cred.senha },
-    KEEPCONNECTED: { $: "S" },
   });
-  const sessao = (corpo as { jsessionid?: { $?: string } }).jsessionid?.$;
-  if (!sessao) throw new Error("Não foi possível autenticar no Sankhya.");
-  return sessao;
 }
 
-async function consultar(cred: Credenciais, sessao: string, sql: string): Promise<string[][]> {
-  const corpo = await chamar(cred, "DbExplorerSP.executeQuery", { sql }, sessao);
+async function consultar(cred: Credenciais, bearer: string, sql: string): Promise<string[][]> {
+  const corpo = await chamar(cred, bearer, "DbExplorerSP.executeQuery", { sql });
   const rows = (corpo as { rows?: unknown }).rows;
   if (!Array.isArray(rows)) return [];
   return rows.map((linha) => (Array.isArray(linha) ? linha.map((v) => (v == null ? "" : String(v))) : []));
 }
+
 
 const num = (valor: string | undefined) => {
   const n = Number(String(valor ?? "").replace(",", "."));
