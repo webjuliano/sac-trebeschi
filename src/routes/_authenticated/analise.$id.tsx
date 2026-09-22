@@ -34,6 +34,8 @@ function AnaliseDetalhePage() {
   const obterComercial = useServerFn(obterAnaliseComercial);
   const decidir = useServerFn(registrarDecisao);
   const gravarSnapshot = useServerFn(registrarSnapshotAnalise);
+  const corrigir = useServerFn(corrigirDadosVenda);
+
 
   const [dados, setDados] = useState<Awaited<ReturnType<typeof obterProtocolo>> | null>(null);
   const [comercial, setComercial] = useState<Awaited<ReturnType<typeof obterAnaliseComercial>> | null>(null);
