@@ -23,8 +23,9 @@
 
 ## Etapa 3 — Sankhya
 - [x] Serviço de integração no servidor (autenticação /authenticate com X-Token + client_id/secret)
-- [ ] Cadastrar as credenciais (SANKHYA_TOKEN, SANKHYA_CLIENT_ID, SANKHYA_CLIENT_SECRET)
-- [ ] Testar a conexão real e validar as consultas (nota, vendas, devoluções, margem)
+- [x] Cadastrar as credenciais (SANKHYA_TOKEN, SANKHYA_CLIENT_ID, SANKHYA_CLIENT_SECRET)
+- [x] Testar a conexão real e validar as consultas (nota, vendas, devoluções, margem)
+
 - [x] Indicadores do cliente na tela de análise (margem, % devolução)
 
 
