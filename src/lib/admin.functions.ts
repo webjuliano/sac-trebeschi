@@ -156,9 +156,9 @@ export const criarUsuario = createServerFn({ method: "POST" })
     const erro = perfilError ?? papelError ?? vinculoError;
     if (erro) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      throw new Error(erro.message);
+      return { ok: false as const, mensagem: erro.message };
     }
-    return { ok: true };
+    return { ok: true as const, mensagem: "" };
   });
 
 export const atualizarVinculosUsuario = createServerFn({ method: "POST" })
