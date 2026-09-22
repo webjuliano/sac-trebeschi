@@ -271,6 +271,25 @@ function AnaliseDetalhePage() {
                           <span>{comercial.analise.nota.numero} · {formatarData(comercial.analise.nota.data_emissao)}</span>
                           <strong>{moeda(comercial.analise.nota.valor_total)}</strong>
                         </div>
+                        <div className="space-y-1 bg-muted/30 p-3 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Valor aceito para devolução</span>
+                            <strong>{moeda(valorAceito)}</strong>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">% da nota de venda</span>
+                            {(() => {
+                              const total = Number(comercial.analise.nota.valor_total);
+                              const percentual = total > 0 ? (valorAceito / total) * 100 : null;
+                              const acima = percentual != null && percentual > limite;
+                              return (
+                                <span className={`rounded-full px-2 py-0.5 font-semibold ${acima ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
+                                  {pct(percentual)}
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        </div>
                         {comercial.analise.nota.itens.map((item, index) => (
                           <div key={`${item.codigo}-${index}`} className="flex items-center justify-between gap-3 p-3 text-xs">
                             <span className="min-w-0 truncate">{item.produto}</span>
