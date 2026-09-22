@@ -112,7 +112,63 @@ export const obterAnaliseComercial = createServerFn({ method: "POST" })
     return { analise, limite_percentual: limite };
   });
 
+/** Corrige o número da nota de venda e a data da compra informados pela loja. */
+export const corrigirDadosVenda = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        protocolo_id: z.string().uuid(),
+        nota_fiscal: z.string().trim().max(30).nullable(),
+        data_compra: z
+          .string()
+          .trim()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data da compra no formato dia/mês/ano.")
+          .nullable(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await exigirEquipe(context);
+
+    const { data: atual, error: erroLeitura } = await context.supabase
+      .from("protocolos")
+      .select("nota_fiscal, data_compra")
+      .eq("id", data.protocolo_id)
+      .maybeSingle();
+    if (erroLeitura) throw new Error(erroLeitura.message);
+    if (!atual) throw new Error("Solicitação não encontrada.");
+
+    const nota = data.nota_fiscal || null;
+    const dataCompra = data.data_compra || null;
+
+    const { error } = await context.supabase
+      .from("protocolos")
+      .update({ nota_fiscal: nota, data_compra: dataCompra })
+      .eq("id", data.protocolo_id);
+    if (error) throw new Error(error.message);
+
+    const { data: perfil } = await context.supabase
+      .from("profiles")
+      .select("nome, email")
+      .eq("id", context.userId)
+      .maybeSingle();
+
+    await context.supabase.from("protocolo_eventos").insert({
+      protocolo_id: data.protocolo_id,
+      tipo: "correcao_dados_venda",
+      descricao:
+        `Dados da venda corrigidos — nota de venda: ${atual.nota_fiscal || "não informada"} → ${nota || "não informada"}; ` +
+        `data da compra: ${atual.data_compra || "não informada"} → ${dataCompra || "não informada"}.`,
+      autor_id: context.userId,
+      autor_nome: perfil?.nome || perfil?.email || "Equipe Trebeschi",
+    });
+
+    return { ok: true };
+  });
+
 /** Grava no histórico o resumo dos números usados na análise. */
+
 export const registrarSnapshotAnalise = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
