@@ -56,7 +56,7 @@ export const listarAdministracao = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [lojas, perfis, papeis, vinculos] = await Promise.all([
       supabaseAdmin.from("lojas").select("*").order("rede").order("nome"),
-      supabaseAdmin.from("profiles").select("id, nome, email, created_at").order("nome"),
+      supabaseAdmin.from("profiles").select("id, nome, email, ativo, created_at").order("nome"),
       supabaseAdmin.from("user_roles").select("user_id, role"),
       supabaseAdmin.from("user_lojas").select("user_id, loja_id"),
     ]);
@@ -178,4 +178,108 @@ export const atualizarVinculosUsuario = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
     return { ok: true };
+  });
+
+const STATUS_ABERTOS = [
+  "aberto",
+  "em_analise",
+  "aguardando_cliente",
+  "aguardando_nf",
+  "coletado",
+] as const;
+
+/** Ativa ou inativa o acesso de um usuário (mantém o histórico). */
+export const definirStatusUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ user_id: z.string().uuid(), ativo: z.boolean() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await exigirAdmin(context);
+    if (data.user_id === context.userId && !data.ativo) {
+      return { ok: false as const, mensagem: "Você не pode inativar o seu próprio acesso." };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ ativo: data.ativo })
+      .eq("id", data.user_id);
+    if (error) return { ok: false as const, mensagem: error.message };
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      ban_duration: data.ativo ? "none" : "876000h",
+    });
+    if (authError) return { ok: false as const, mensagem: authError.message };
+    return { ok: true as const, mensagem: data.ativo ? "Acesso reativado." : "Acesso inativado." };
+  });
+
+/** Exclui o usuário somente quando não há nenhum vínculo na base. */
+export const excluirUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ user_id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await exigirAdmin(context);
+    if (data.user_id === context.userId) {
+      return { ok: false as const, mensagem: "Você não pode excluir o seu próprio acesso." };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: papeis } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user_id);
+    const roles = (papeis ?? []).map((item) => item.role);
+    const equipe = roles.includes("admin") || roles.includes("analista");
+
+    // Atendimentos: solicitações em que o usuário atuou.
+    const atendimentos = await Promise.all(
+      (["responsavel_id", "decidido_por", "canhoto_confirmado_por"] as const).map((coluna) =>
+        supabaseAdmin
+          .from("protocolos")
+          .select("id", { count: "exact", head: true })
+          .eq(coluna, data.user_id),
+      ),
+    );
+    const eventos = await supabaseAdmin
+      .from("protocolo_eventos")
+      .select("id", { count: "exact", head: true })
+      .eq("autor_id", data.user_id);
+    const atuacoes = atendimentos.reduce((total, r) => total + (r.count ?? 0), 0) + (eventos.count ?? 0);
+    if (atuacoes > 0) {
+      return {
+        ok: false as const,
+        mensagem: equipe
+          ? "Este usuário já possui atendimentos registrados. Inative o acesso em vez de excluir."
+          : "Este usuário já possui registros em solicitações. Inative o acesso em vez de excluir.",
+      };
+    }
+
+    // Usuário de loja: não pode ter solicitação em aberto nas lojas vinculadas.
+    if (!equipe) {
+      const { data: vinculos } = await supabaseAdmin
+        .from("user_lojas")
+        .select("loja_id")
+        .eq("user_id", data.user_id);
+      const lojaIds = (vinculos ?? []).map((item) => item.loja_id);
+      if (lojaIds.length > 0) {
+        const { count } = await supabaseAdmin
+          .from("protocolos")
+          .select("id", { count: "exact", head: true })
+          .in("loja_id", lojaIds)
+          .in("status", [...STATUS_ABERTOS]);
+        if ((count ?? 0) > 0) {
+          return {
+            ok: false as const,
+            mensagem:
+              "Existem solicitações em aberto nas lojas deste usuário. Conclua-as ou apenas inative o acesso.",
+          };
+        }
+      }
+    }
+
+    await supabaseAdmin.from("user_lojas").delete().eq("user_id", data.user_id);
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
+    await supabaseAdmin.from("profiles").delete().eq("id", data.user_id);
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
+    if (error) return { ok: false as const, mensagem: error.message };
+    return { ok: true as const, mensagem: "Usuário excluído." };
   });
