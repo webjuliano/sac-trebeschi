@@ -7,6 +7,8 @@
 - [x] E-mail de confirmação registrado (envio aguarda domínio)
 
 ## Etapa 2 — Painel interno (fila)
+- [x] Entrada autenticada com menu lateral e visão geral por situação
+- [x] Nova solicitação protegida e limitada às lojas vinculadas
 - [x] Login e primeiro cadastro da equipe Trebeschi
 - [x] Fila com filtros (status e busca por protocolo/loja/solicitante)
 - [x] Tela do protocolo: dados, fotos, histórico, parecer
