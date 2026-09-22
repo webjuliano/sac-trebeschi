@@ -40,6 +40,7 @@ export type Database = {
           ativa: boolean
           cnpj: string | null
           codigo: string
+          codigo_sankhya: string | null
           created_at: string
           email_contato: string | null
           id: string
@@ -51,6 +52,7 @@ export type Database = {
           ativa?: boolean
           cnpj?: string | null
           codigo: string
+          codigo_sankhya?: string | null
           created_at?: string
           email_contato?: string | null
           id?: string
@@ -62,6 +64,7 @@ export type Database = {
           ativa?: boolean
           cnpj?: string | null
           codigo?: string
+          codigo_sankhya?: string | null
           created_at?: string
           email_contato?: string | null
           id?: string
@@ -378,6 +381,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sankhya_cache: {
+        Row: {
+          chave: string
+          created_at: string
+          expira_em: string
+          payload: Json
+        }
+        Insert: {
+          chave: string
+          created_at?: string
+          expira_em: string
+          payload: Json
+        }
+        Update: {
+          chave?: string
+          created_at?: string
+          expira_em?: string
+          payload?: Json
+        }
+        Relationships: []
       }
       user_lojas: {
         Row: {
