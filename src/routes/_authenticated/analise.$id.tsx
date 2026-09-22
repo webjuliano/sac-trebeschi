@@ -42,6 +42,9 @@ function AnaliseDetalhePage() {
   const [parecer, setParecer] = useState("");
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
   const [salvando, setSalvando] = useState(false);
+  const [notaEdit, setNotaEdit] = useState("");
+  const [dataCompraEdit, setDataCompraEdit] = useState("");
+  const [corrigindo, setCorrigindo] = useState(false);
 
   async function carregar() {
     try {
@@ -49,21 +52,48 @@ function AnaliseDetalhePage() {
       setDados(retorno);
       setStatus(retorno.protocolo.status === "aberto" ? "aceito_parcial" : retorno.protocolo.status);
       setParecer(retorno.protocolo.parecer ?? "");
+      setNotaEdit(retorno.protocolo.nota_fiscal ?? "");
+      setDataCompraEdit(retorno.protocolo.data_compra ?? "");
       setQuantidades(Object.fromEntries(retorno.itens.map((item) => [item.id, Number(item.quantidade_aceita ?? item.quantidade)])));
     } catch {
       toast.error("Não foi possível carregar esta solicitação.");
     }
   }
 
+  async function carregarComercial() {
+    setCarregandoComercial(true);
+    try {
+      setComercial(await obterComercial({ data: { protocolo_id: id } }));
+    } catch {
+      setComercial(null);
+    } finally {
+      setCarregandoComercial(false);
+    }
+  }
+
   useEffect(() => { void carregar(); }, [id]);
 
-  useEffect(() => {
-    setCarregandoComercial(true);
-    obterComercial({ data: { protocolo_id: id } })
-      .then(setComercial)
-      .catch(() => setComercial(null))
-      .finally(() => setCarregandoComercial(false));
-  }, [id, obterComercial]);
+  useEffect(() => { void carregarComercial(); }, [id]);
+
+  async function corrigirVenda(event: FormEvent) {
+    event.preventDefault();
+    setCorrigindo(true);
+    try {
+      await corrigir({ data: {
+        protocolo_id: id,
+        nota_fiscal: notaEdit.trim() || null,
+        data_compra: dataCompraEdit || null,
+      } });
+      toast.success("Dados da venda corrigidos.");
+      await carregar();
+      await carregarComercial();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível corrigir os dados da venda.");
+    } finally {
+      setCorrigindo(false);
+    }
+  }
+
 
   const valorAceito = useMemo(
     () => dados?.itens.reduce((soma, item) => soma + (quantidades[item.id] ?? 0) * Number(item.valor_unitario), 0) ?? 0,
