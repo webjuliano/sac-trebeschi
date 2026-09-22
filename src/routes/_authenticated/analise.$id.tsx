@@ -162,7 +162,28 @@ function AnaliseDetalhePage() {
         <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="space-y-8">
             <section>
+              <Titulo icon={<Pencil />} texto="Dados da venda informados pela loja" />
+              <form onSubmit={corrigirVenda} className="mt-4 flex flex-wrap items-end gap-4 border bg-card p-5">
+                <div className="min-w-[180px]">
+                  <Label className="mb-2 block" htmlFor="nota-venda">Número da nota de venda</Label>
+                  <Input id="nota-venda" value={notaEdit} onChange={(e) => setNotaEdit(e.target.value)} placeholder="Ex.: 173985" />
+                </div>
+                <div className="min-w-[180px]">
+                  <Label className="mb-2 block" htmlFor="data-compra">Data da compra</Label>
+                  <Input id="data-compra" type="date" value={dataCompraEdit} onChange={(e) => setDataCompraEdit(e.target.value)} />
+                </div>
+                <Button type="submit" variant="secondary" disabled={corrigindo}>
+                  {corrigindo ? <Loader2 className="animate-spin" /> : <Pencil />} Corrigir e consultar novamente
+                </Button>
+                <p className="w-full text-xs text-muted-foreground">
+                  Corrija quando a loja informar a nota ou a data erradas. A consulta ao Sankhya é refeita e a alteração fica registrada no histórico.
+                </p>
+              </form>
+            </section>
+
+            <section>
               <Titulo icon={<Package />} texto="Itens solicitados pela loja" />
+
               <div className="mt-4 overflow-x-auto border bg-card">
                 <table className="w-full min-w-[720px] text-sm">
                   <thead className="border-b bg-muted/60 text-left text-xs uppercase text-muted-foreground">
