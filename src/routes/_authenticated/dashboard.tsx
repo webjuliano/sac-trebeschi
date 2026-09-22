@@ -70,7 +70,7 @@ function Dashboard() {
           <Cartao ativo={filtro === "abertos"} onClick={() => setFiltro(filtro === "abertos" ? "todos" : "abertos")} icone={<Inbox />} rotulo="Abertas" valor={resumo.abertos} />
           <Cartao ativo={filtro === "pendentes"} onClick={() => setFiltro(filtro === "pendentes" ? "todos" : "pendentes")} icone={<Clock3 />} rotulo="Pendentes" valor={resumo.pendentes} />
           <Cartao ativo={filtro === "fechados"} onClick={() => setFiltro(filtro === "fechados" ? "todos" : "fechados")} icone={<CheckCircle2 />} rotulo="Fechadas" valor={resumo.fechados} />
-          <Cartao icone={<span className="text-sm font-bold">R$</span>} rotulo="Valor em andamento" valor={moeda(resumo.valor)} />
+          <Cartao icone={<TrendingUp />} rotulo="Valor em andamento" valor={moeda(resumo.valor)} />
         </div>
 
         <div className="mt-8 flex items-center justify-between">
