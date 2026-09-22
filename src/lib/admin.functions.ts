@@ -6,10 +6,12 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const lojaSchema = z.object({
   nome: z.string().trim().min(2).max(120),
   codigo: z.string().trim().min(1).max(40),
+  codigo_sankhya: z.string().trim().min(1).max(40),
   rede: z.string().trim().max(120).optional().nullable(),
   cnpj: z.string().trim().max(24).optional().nullable(),
   email_contato: z.string().trim().email().max(160).optional().nullable().or(z.literal("")),
 });
+
 
 const usuarioSchema = z.object({
   nome: z.string().trim().min(2).max(120),
