@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Package, ReceiptText, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Package, Pencil, ReceiptText, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalShell } from "@/components/portal-shell";
