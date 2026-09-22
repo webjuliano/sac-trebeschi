@@ -42,13 +42,20 @@ export function PortalShell({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const consultarAcesso = useServerFn(obterMeuAcesso);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isEquipe, setIsEquipe] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
   const [senhaAberta, setSenhaAberta] = useState(false);
   const [salvandoSenha, setSalvandoSenha] = useState(false);
 
   useEffect(() => {
-    consultarAcesso().then((acesso) => setIsAdmin(acesso.isAdmin)).catch(() => setIsAdmin(false));
+    consultarAcesso()
+      .then((acesso) => {
+        setIsAdmin(acesso.isAdmin);
+        setIsEquipe(acesso.roles.includes("admin") || acesso.roles.includes("analista"));
+      })
+      .catch(() => { setIsAdmin(false); setIsEquipe(false); });
   }, [consultarAcesso]);
+
 
   async function sair() {
     await queryClient.cancelQueries();
