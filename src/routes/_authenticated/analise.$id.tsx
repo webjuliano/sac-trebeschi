@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { obterAnaliseComercial, registrarSnapshotAnalise } from "@/lib/analise.functions";
+import { corrigirDadosVenda, obterAnaliseComercial, registrarSnapshotAnalise } from "@/lib/analise.functions";
 import { obterProtocolo, registrarDecisao } from "@/lib/protocolos.functions";
 import { STATUS_CLASSE, STATUS_LABEL, STATUS_OPCOES, data as formatarData, dataHora, moeda } from "@/lib/protocolo-ui";
 
