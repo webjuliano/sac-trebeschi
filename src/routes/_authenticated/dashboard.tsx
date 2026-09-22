@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, Clock3, Inbox } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, Inbox, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalShell } from "@/components/portal-shell";
