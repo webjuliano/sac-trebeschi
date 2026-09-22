@@ -104,7 +104,7 @@ export const obterAnaliseComercial = createServerFn({ method: "POST" })
     if (analise.configurado) {
       await supabaseAdmin.from("sankhya_cache").upsert({
         chave,
-        payload: analise as unknown as Record<string, unknown>,
+        payload: JSON.parse(JSON.stringify(analise)),
         expira_em: new Date(Date.now() + minutosCache * 60_000).toISOString(),
       });
     }
