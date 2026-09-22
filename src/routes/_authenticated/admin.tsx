@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type FormEvent } from "react";
-import { Building2, Loader2, Plus, ShieldCheck, Store, Users } from "lucide-react";
+import { Ban, Building2, Loader2, Plus, RotateCcw, ShieldCheck, Store, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalHeader } from "@/components/portal-header";
@@ -13,6 +13,8 @@ import {
   atualizarVinculosUsuario,
   criarLoja,
   criarUsuario,
+  definirStatusUsuario,
+  excluirUsuario,
   listarAdministracao,
 } from "@/lib/admin.functions";
 
@@ -107,7 +109,7 @@ function AdminPage() {
 
       </div> : <div className="mt-8 grid gap-8 lg:grid-cols-[420px_1fr]">
         <form onSubmit={cadastrarUsuario} className="space-y-5 border bg-card p-6"><div><h2 className="text-xl font-bold">Novo usuário</h2><p className="mt-1 text-sm text-muted-foreground">Crie o acesso e escolha as lojas permitidas.</p></div><Campo label="Nome"><Input name="nome" required /></Campo><Campo label="E-mail"><Input name="email" type="email" required /></Campo><Campo label="Senha inicial"><Input name="senha" type="password" minLength={8} required /></Campo><Campo label="Perfil"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={role} onChange={(e) => { setRole(e.target.value as typeof role); setLojasSelecionadas([]); }}><option value="loja">Usuário de loja</option><option value="analista">Analista Trebeschi</option><option value="admin">Administrador</option></select></Campo>{role === "loja" && <SelecaoLojas lojas={dados.lojas} selecionadas={lojasSelecionadas} onChange={setLojasSelecionadas} />}<Button className="w-full" type="submit" disabled={salvando}>{salvando ? <Loader2 className="animate-spin" /> : <Plus />} Criar usuário</Button></form>
-        <section><h2 className="text-lg font-bold">Usuários cadastrados</h2><div className="mt-4 space-y-3">{dados.usuarios.map((usuario) => <Usuario key={usuario.id} usuario={usuario} lojas={dados.lojas} salvar={async (loja_ids) => { try { await salvarVinculos({ data: { user_id: usuario.id, loja_ids } }); toast.success("Lojas atualizadas."); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); } }} />)}</div></section>
+        <section><h2 className="text-lg font-bold">Usuários cadastrados</h2><div className="mt-4 space-y-3">{dados.usuarios.map((usuario) => <Usuario key={usuario.id} usuario={usuario} lojas={dados.lojas} salvar={async (loja_ids) => { try { await salvarVinculos({ data: { user_id: usuario.id, loja_ids } }); toast.success("Lojas atualizadas."); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); } }} alterarStatus={async (ativo) => { try { const r = await mudarStatus({ data: { user_id: usuario.id, ativo } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível alterar o acesso."); } }} excluir={async () => { try { const r = await removerUsuario({ data: { user_id: usuario.id } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível excluir."); } }} />)}</div></section>
       </div>}
     </main></div>;
 }
@@ -133,4 +135,23 @@ function LinhaLoja({ loja, salvar }: { loja: DadosAdmin["lojas"][number]; salvar
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) { return <div><Label className="mb-2 block">{label}</Label>{children}</div>; }
 function SelecaoLojas({ lojas, selecionadas, onChange }: { lojas: DadosAdmin["lojas"]; selecionadas: string[]; onChange: (ids: string[]) => void }) { return <fieldset><legend className="mb-2 text-sm font-medium">Lojas permitidas</legend><div className="max-h-52 space-y-1 overflow-y-auto border p-2">{lojas.map((loja) => <label key={loja.id} className="flex cursor-pointer items-center gap-3 p-2 text-sm hover:bg-accent"><input type="checkbox" className="size-4 accent-primary" checked={selecionadas.includes(loja.id)} onChange={(e) => onChange(e.target.checked ? [...selecionadas, loja.id] : selecionadas.filter((id) => id !== loja.id))} /><span>{loja.rede ? `${loja.rede} — ` : ""}{loja.nome}</span></label>)}</div></fieldset>; }
-function Usuario({ usuario, lojas, salvar }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; salvar: (ids: string[]) => Promise<void> }) { const [ids, setIds] = useState(usuario.loja_ids); const perfil = usuario.roles.includes("admin") ? "Administrador" : usuario.roles.includes("analista") ? "Analista" : "Usuário de loja"; const editavel = usuario.roles.includes("loja"); return <div className="border bg-card p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{usuario.nome || "Sem nome"}</strong><p className="mt-1 text-sm text-muted-foreground">{usuario.email}</p></div><span className="rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">{perfil}</span></div>{editavel && <div className="mt-4"><SelecaoLojas lojas={lojas} selecionadas={ids} onChange={setIds} /><Button variant="outline" size="sm" className="mt-3" onClick={() => salvar(ids)}>Salvar lojas</Button></div>}</div>; }
+function Usuario({ usuario, lojas, salvar, alterarStatus, excluir }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; salvar: (ids: string[]) => Promise<void>; alterarStatus: (ativo: boolean) => Promise<void>; excluir: () => Promise<void> }) {
+  const [ids, setIds] = useState(usuario.loja_ids);
+  const perfil = usuario.roles.includes("admin") ? "Administrador" : usuario.roles.includes("analista") ? "Analista" : "Usuário de loja";
+  const editavel = usuario.roles.includes("loja");
+  const ativo = usuario.ativo !== false;
+  return <div className="border bg-card p-5">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div><strong>{usuario.nome || "Sem nome"}</strong><p className="mt-1 text-sm text-muted-foreground">{usuario.email}</p></div>
+      <div className="flex items-center gap-2">
+        <span className={ativo ? "rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary" : "rounded-md bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground"}>{ativo ? "Ativo" : "Inativo"}</span>
+        <span className="rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">{perfil}</span>
+      </div>
+    </div>
+    {editavel && <div className="mt-4"><SelecaoLojas lojas={lojas} selecionadas={ids} onChange={setIds} /><Button variant="outline" size="sm" className="mt-3" onClick={() => salvar(ids)}>Salvar lojas</Button></div>}
+    <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
+      <Button variant="outline" size="sm" onClick={() => alterarStatus(!ativo)}>{ativo ? <><Ban /> Inativar acesso</> : <><RotateCcw /> Reativar acesso</>}</Button>
+      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { if (window.confirm(`Excluir definitivamente ${usuario.email}? Só é possível se não houver nada vinculado.`)) void excluir(); }}><Trash2 /> Excluir</Button>
+    </div>
+  </div>;
+}
