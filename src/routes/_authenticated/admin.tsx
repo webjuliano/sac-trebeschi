@@ -79,10 +79,14 @@ function AdminPage() {
     const form = new FormData(event.currentTarget);
     setSalvando(true);
     try {
-      await salvarUsuario({ data: {
+      const resultado = await salvarUsuario({ data: {
         nome: String(form.get("nome")), email: String(form.get("email")), senha: String(form.get("senha")),
         role, loja_ids: role === "loja" ? lojasSelecionadas : [],
       } });
+      if (!resultado.ok) {
+        toast.error(resultado.mensagem);
+        return;
+      }
       event.currentTarget.reset(); setRole("loja"); setLojasSelecionadas([]);
       toast.success("Usuário criado e acesso configurado.");
       await carregar();
