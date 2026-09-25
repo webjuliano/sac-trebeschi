@@ -150,6 +150,7 @@ function SelecaoLojas({ lojas, selecionadas, onChange }: { lojas: DadosAdmin["lo
 function Usuario({ usuario, lojas, editar, salvar, alterarStatus, excluir }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; editar: (v: { nome: string; role: "admin" | "analista" | "loja"; loja_ids: string[] }) => Promise<boolean>; salvar: (ids: string[]) => Promise<void>; alterarStatus: (ativo: boolean) => Promise<void>; excluir: () => Promise<void> }) {
   const [ids, setIds] = useState(usuario.loja_ids);
   const [editando, setEditando] = useState(false);
+  const redefinirSenha = useServerFn(redefinirSenhaUsuario);
   const vinculadas = lojas.filter((l) => usuario.loja_ids.includes(l.id));
   const perfil = usuario.roles.includes("admin") ? "Administrador" : usuario.roles.includes("analista") ? "Analista" : "Usuário de loja";
   const editavel = usuario.roles.includes("loja");
