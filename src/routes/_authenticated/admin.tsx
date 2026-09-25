@@ -49,6 +49,7 @@ function AdminPage() {
   const salvarEdicao = useServerFn(editarUsuario);
   const [dados, setDados] = useState<DadosAdmin | null>(null);
   const [aba, setAba] = useState<"usuarios" | "lojas">("usuarios");
+  const [buscaLoja, setBuscaLoja] = useState("");
   const [role, setRole] = useState<"admin" | "analista" | "loja">("loja");
   const [lojasSelecionadas, setLojasSelecionadas] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
