@@ -7,6 +7,7 @@ export const STATUS_LABEL: Record<string, string> = {
   recusado: "Recusado",
   aguardando_nf: "Aguardando NF",
   coletado: "Coletado",
+  nf_anexada: "NF anexada",
   encerrado: "Encerrado",
 };
 
@@ -19,10 +20,17 @@ export const STATUS_CLASSE: Record<string, string> = {
   recusado: "bg-destructive/15 text-destructive",
   aguardando_nf: "bg-muted text-muted-foreground",
   coletado: "bg-chart-2/20 text-chart-3",
+  nf_anexada: "bg-chart-2/20 text-chart-3",
   encerrado: "bg-muted text-muted-foreground",
 };
 
-export const STATUS_OPCOES = Object.keys(STATUS_LABEL);
+export const STATUS_OPCOES = ["aberto", "em_analise", "recusado", "aguardando_nf", "nf_anexada", "encerrado"];
+
+export const APROVACAO_LABEL: Record<string, string> = {
+  aceito_parcial: "Aceito parcial",
+  aceito_total: "Aceito integral",
+  recusado: "Recusado",
+};
 
 export function moeda(valor: number | string | null | undefined) {
   const numero = typeof valor === "string" ? Number(valor) : (valor ?? 0);
