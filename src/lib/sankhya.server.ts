@@ -213,13 +213,17 @@ export async function buscarAnaliseComercial(params: {
         numero: linha[1] ?? numeroNota,
         data_emissao: linha[2] ?? null,
         valor_total: num(linha[3]),
-        itens: itens.map((i) => ({
-          produto: i[0] ?? "",
-          codigo: i[1] ?? null,
-          quantidade: num(i[2]),
-          valor_unitario: num(i[3]),
-          valor_total: num(i[4]),
-        })),
+        itens: itens.map((i) => {
+          const quantidade = num(i[2]);
+          const total = num(i[3]);
+          return {
+            produto: i[0] ?? "",
+            codigo: i[1] ?? null,
+            quantidade,
+            valor_unitario: quantidade > 0 ? total / quantidade : 0,
+            valor_total: total,
+          };
+        }),
       };
     }
   }
