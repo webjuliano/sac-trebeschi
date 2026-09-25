@@ -321,3 +321,30 @@ export async function listarItensNota(codigoCliente: string, nunota: string): Pr
     unidade: i[5] ?? "",
   }));
 }
+
+export type LojaParceiro = { codparc: string; nome: string; endereco: string; numero: string; cidade: string; uf: string };
+
+/** Lojas (parceiros ativos) vinculadas a um parceiro matriz. */
+export async function listarLojasMatriz(codMatriz: string): Promise<{ matriz: string | null; lojas: LojaParceiro[] }> {
+  const cred = lerCredenciais();
+  if (!cred) throw new Error("Integração com o Sankhya não configurada.");
+  const cod = Math.trunc(num(codMatriz));
+  if (!cod) throw new Error("Código do parceiro matriz inválido.");
+  const sessao = await autenticar(cred);
+  const matriz = await consultar(cred, sessao, `SELECT NOMEPARC FROM TGFPAR WHERE CODPARC = ${cod}`);
+  const linhas = await consultar(
+    cred,
+    sessao,
+    `SELECT PAR.CODPARC, PAR.NOMEPARC, EN.NOMEEND, PAR.NUMEND, CID.NOMECID, UF.UF
+     FROM TGFPAR PAR
+     LEFT JOIN TSIEND EN ON PAR.CODEND = EN.CODEND
+     LEFT JOIN TSICID CID ON PAR.CODCID = CID.CODCID
+     LEFT JOIN TSIUFS UF ON CID.UF = UF.CODUF
+     WHERE PAR.CODPARCMATRIZ = ${cod} AND PAR.ATIVO = 'S'
+     ORDER BY PAR.NOMEPARC`,
+  );
+  return {
+    matriz: matriz[0]?.[0] ?? null,
+    lojas: linhas.map((l) => ({ codparc: l[0] ?? "", nome: (l[1] ?? "").trim(), endereco: l[2] ?? "", numero: l[3] ?? "", cidade: l[4] ?? "", uf: l[5] ?? "" })),
+  };
+}

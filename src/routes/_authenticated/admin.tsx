@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type FormEvent } from "react";
-import { Ban, Building2, Loader2, Pencil, Plus, RotateCcw, ShieldCheck, Store, Trash2, Users } from "lucide-react";
+import { Ban, Building2, Download, Search, X, Loader2, Pencil, Plus, RotateCcw, ShieldCheck, Store, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalHeader } from "@/components/portal-header";
@@ -17,6 +17,8 @@ import {
   excluirUsuario,
   editarUsuario,
   listarAdministracao,
+  buscarLojasMatriz,
+  importarLojasMatriz,
 } from "@/lib/admin.functions";
 
 
@@ -110,7 +112,7 @@ function AdminPage() {
       <div className="mt-6 flex gap-1 border-b"><Button variant={aba === "usuarios" ? "default" : "ghost"} onClick={() => setAba("usuarios")}><Users /> Usuários</Button><Button variant={aba === "lojas" ? "default" : "ghost"} onClick={() => setAba("lojas")}><Store /> Lojas</Button></div>
       {aba === "lojas" ? <div className="mt-8 grid gap-8 lg:grid-cols-[420px_1fr]">
         <form onSubmit={cadastrarLoja} className="space-y-5 border bg-card p-6"><div><h2 className="text-xl font-bold">Nova loja</h2><p className="mt-1 text-sm text-muted-foreground">Inclua uma unidade para liberar nos acessos.</p></div><Campo label="Nome da loja"><Input name="nome" required /></Campo><div className="grid grid-cols-2 gap-4"><Campo label="Código"><Input name="codigo" required /></Campo><Campo label="Rede"><Input name="rede" /></Campo></div><div className="grid grid-cols-2 gap-4"><Campo label="Código do cliente no Sankhya"><Input name="codigo_sankhya" required placeholder="Ex.: 1042" /></Campo><Campo label="Qtd dias vendas"><Input name="dias_vendas" type="number" min={1} max={365} defaultValue={30} required /></Campo></div><Campo label="CNPJ"><Input name="cnpj" /></Campo><Campo label="E-mail de contato"><Input name="email_contato" type="email" /></Campo><Button className="w-full" type="submit" disabled={salvando}>{salvando ? <Loader2 className="animate-spin" /> : <Plus />} Cadastrar loja</Button></form>
-        <section><h2 className="text-lg font-bold">Lojas cadastradas</h2><div className="mt-4 overflow-hidden border bg-card">{dados.lojas.map((loja) => <LinhaLoja key={loja.id} loja={loja} salvar={async (codigo_sankhya, dias_vendas) => { try { await salvarCodigoSankhya({ data: { loja_id: loja.id, codigo_sankhya, dias_vendas } }); toast.success("Loja atualizada."); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); } }} />)}</div></section>
+        <section className="space-y-4"><ImportarMatriz aoImportar={carregar} /><h2 className="text-lg font-bold">Lojas cadastradas</h2><div className="mt-4 overflow-hidden border bg-card">{dados.lojas.map((loja) => <LinhaLoja key={loja.id} loja={loja} salvar={async (codigo_sankhya, dias_vendas) => { try { await salvarCodigoSankhya({ data: { loja_id: loja.id, codigo_sankhya, dias_vendas } }); toast.success("Loja atualizada."); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); } }} />)}</div></section>
 
       </div> : <div className="mt-8 grid gap-8 lg:grid-cols-[420px_1fr]">
         <form onSubmit={cadastrarUsuario} className="space-y-5 border bg-card p-6"><div><h2 className="text-xl font-bold">Novo usuário</h2><p className="mt-1 text-sm text-muted-foreground">Crie o acesso e escolha as lojas permitidas.</p></div><Campo label="Nome"><Input name="nome" required /></Campo><Campo label="E-mail"><Input name="email" type="email" required /></Campo><Campo label="Senha inicial"><Input name="senha" type="password" minLength={8} required /></Campo><Campo label="Perfil"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={role} onChange={(e) => { setRole(e.target.value as typeof role); setLojasSelecionadas([]); }}><option value="loja">Usuário de loja</option><option value="analista">Analista Trebeschi</option><option value="admin">Administrador</option></select></Campo>{role === "loja" && <SelecaoLojas lojas={dados.lojas} selecionadas={lojasSelecionadas} onChange={setLojasSelecionadas} />}<Button className="w-full" type="submit" disabled={salvando}>{salvando ? <Loader2 className="animate-spin" /> : <Plus />} Criar usuário</Button></form>
@@ -184,5 +186,62 @@ function Usuario({ usuario, lojas, editar, salvar, alterarStatus, excluir }: { u
       <Button variant="outline" size="sm" onClick={() => alterarStatus(!ativo)}>{ativo ? <><Ban /> Inativar acesso</> : <><RotateCcw /> Reativar acesso</>}</Button>
       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { if (window.confirm(`Excluir definitivamente ${usuario.email}? Só é possível se não houver nada vinculado.`)) void excluir(); }}><Trash2 /> Excluir</Button>
     </div>
+  </div>;
+}
+type LojaMatriz = { codparc: string; nome: string; endereco: string; numero: string; cidade: string; uf: string; ja_cadastrada: boolean };
+
+function ImportarMatriz({ aoImportar }: { aoImportar: () => Promise<void> }) {
+  const buscar = useServerFn(buscarLojasMatriz);
+  const importar = useServerFn(importarLojasMatriz);
+  const [aberto, setAberto] = useState(false);
+  const [codigo, setCodigo] = useState("");
+  const [rede, setRede] = useState("");
+  const [lojas, setLojas] = useState<LojaMatriz[] | null>(null);
+  const [sel, setSel] = useState<Record<string, number>>({});
+  const [ocupado, setOcupado] = useState(false);
+
+  async function consultar(event: FormEvent) {
+    event.preventDefault();
+    setOcupado(true);
+    try {
+      const r = await buscar({ data: { codigo_matriz: codigo.trim() } });
+      if (!r.ok) { toast.error(r.mensagem); return; }
+      setLojas(r.lojas); setRede(r.matriz ?? "");
+      setSel(Object.fromEntries(r.lojas.filter((l) => !l.ja_cadastrada).map((l) => [l.codparc, 30])));
+      if (!r.lojas.length) toast.info("Nenhuma loja ativa encontrada para este parceiro matriz.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Falha ao consultar o Sankhya."); }
+    finally { setOcupado(false); }
+  }
+
+  async function confirmar() {
+    if (!lojas) return;
+    const escolhidas = lojas.filter((l) => sel[l.codparc] !== undefined).map((l) => ({ codparc: l.codparc, nome: l.nome.slice(0, 120), dias_vendas: sel[l.codparc] || 30 }));
+    if (!escolhidas.length) { toast.error("Selecione ao menos uma loja."); return; }
+    setOcupado(true);
+    try {
+      const r = await importar({ data: { rede: rede.trim() || null, lojas: escolhidas } });
+      if (r.importadas) toast.success(`${r.importadas} loja(s) importada(s).`);
+      if (r.falhas.length) toast.error(`Não importadas: ${r.falhas.join(", ")}`);
+      setAberto(false); setLojas(null); setCodigo(""); await aoImportar();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Falha ao importar."); }
+    finally { setOcupado(false); }
+  }
+
+  if (!aberto) return <Button variant="outline" onClick={() => setAberto(true)}><Download /> Importar lojas do parceiro matriz</Button>;
+  const disponiveis = lojas?.filter((l) => !l.ja_cadastrada) ?? [];
+  const todas = disponiveis.length > 0 && disponiveis.every((l) => sel[l.codparc] !== undefined);
+  return <div className="space-y-4 border bg-card p-5">
+    <div className="flex items-start justify-between gap-4"><div><h3 className="font-bold">Importar lojas do Sankhya</h3><p className="text-sm text-muted-foreground">Informe o código do parceiro matriz para buscar as lojas ativas.</p></div><Button variant="ghost" size="sm" onClick={() => { setAberto(false); setLojas(null); }}><X /></Button></div>
+    <form onSubmit={consultar} className="flex gap-2"><Input value={codigo} onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))} placeholder="Código do parceiro matriz (ex.: 57111)" required /><Button type="submit" disabled={ocupado || !codigo}>{ocupado && !lojas ? <Loader2 className="animate-spin" /> : <Search />} Buscar</Button></form>
+    {lojas && lojas.length > 0 && <>
+      <Campo label="Rede"><Input value={rede} onChange={(e) => setRede(e.target.value)} /></Campo>
+      <div className="flex items-center justify-between text-sm"><label className="flex items-center gap-2"><input type="checkbox" className="size-4 accent-primary" checked={todas} onChange={(e) => setSel(e.target.checked ? Object.fromEntries(disponiveis.map((l) => [l.codparc, sel[l.codparc] ?? 30])) : {})} /> Selecionar todas</label><span className="text-muted-foreground">{Object.keys(sel).length} de {lojas.length} selecionadas</span></div>
+      <div className="max-h-[420px] overflow-y-auto border">{lojas.map((l) => { const marcada = sel[l.codparc] !== undefined; return <div key={l.codparc} className={`flex items-center gap-3 border-b p-3 text-sm last:border-b-0 ${l.ja_cadastrada ? "opacity-60" : ""}`}>
+        <input type="checkbox" className="size-4 accent-primary" disabled={l.ja_cadastrada} checked={marcada} onChange={(e) => setSel((s) => { const n = { ...s }; if (e.target.checked) n[l.codparc] = 30; else delete n[l.codparc]; return n; })} />
+        <div className="min-w-0 flex-1"><p className="font-medium">{l.nome} <span className="text-muted-foreground">· {l.codparc}</span></p><p className="truncate text-xs text-muted-foreground">{[l.endereco, l.numero].filter(Boolean).join(", ")} — {l.cidade}/{l.uf}</p></div>
+        {l.ja_cadastrada ? <span className="text-xs font-medium text-muted-foreground">Já cadastrada</span> : <label className="flex items-center gap-2 text-xs">Dias vendas<Input type="number" min={1} max={365} className="h-8 w-20" disabled={!marcada} value={sel[l.codparc] ?? 30} onChange={(e) => setSel((s) => ({ ...s, [l.codparc]: Math.max(1, Math.min(365, Number(e.target.value) || 30)) }))} /></label>}
+      </div>; })}</div>
+      <Button className="w-full" onClick={confirmar} disabled={ocupado || !Object.keys(sel).length}>{ocupado ? <Loader2 className="animate-spin" /> : <Download />} Importar {Object.keys(sel).length} loja(s)</Button>
+    </>}
   </div>;
 }
