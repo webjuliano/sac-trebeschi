@@ -15,6 +15,7 @@ import {
   criarUsuario,
   definirStatusUsuario,
   excluirUsuario,
+  editarUsuario,
   listarAdministracao,
 } from "@/lib/admin.functions";
 
@@ -43,6 +44,7 @@ function AdminPage() {
   const salvarVinculos = useServerFn(atualizarVinculosUsuario);
   const mudarStatus = useServerFn(definirStatusUsuario);
   const removerUsuario = useServerFn(excluirUsuario);
+  const salvarEdicao = useServerFn(editarUsuario);
   const [dados, setDados] = useState<DadosAdmin | null>(null);
   const [aba, setAba] = useState<"usuarios" | "lojas">("usuarios");
   const [role, setRole] = useState<"admin" | "analista" | "loja">("loja");
@@ -112,7 +114,7 @@ function AdminPage() {
 
       </div> : <div className="mt-8 grid gap-8 lg:grid-cols-[420px_1fr]">
         <form onSubmit={cadastrarUsuario} className="space-y-5 border bg-card p-6"><div><h2 className="text-xl font-bold">Novo usuário</h2><p className="mt-1 text-sm text-muted-foreground">Crie o acesso e escolha as lojas permitidas.</p></div><Campo label="Nome"><Input name="nome" required /></Campo><Campo label="E-mail"><Input name="email" type="email" required /></Campo><Campo label="Senha inicial"><Input name="senha" type="password" minLength={8} required /></Campo><Campo label="Perfil"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={role} onChange={(e) => { setRole(e.target.value as typeof role); setLojasSelecionadas([]); }}><option value="loja">Usuário de loja</option><option value="analista">Analista Trebeschi</option><option value="admin">Administrador</option></select></Campo>{role === "loja" && <SelecaoLojas lojas={dados.lojas} selecionadas={lojasSelecionadas} onChange={setLojasSelecionadas} />}<Button className="w-full" type="submit" disabled={salvando}>{salvando ? <Loader2 className="animate-spin" /> : <Plus />} Criar usuário</Button></form>
-        <section><h2 className="text-lg font-bold">Usuários cadastrados</h2><div className="mt-4 space-y-3">{dados.usuarios.map((usuario) => <Usuario key={usuario.id} usuario={usuario} lojas={dados.lojas} salvar={async (loja_ids) => { try { await salvarVinculos({ data: { user_id: usuario.id, loja_ids } }); toast.success("Lojas atualizadas."); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); } }} alterarStatus={async (ativo) => { try { const r = await mudarStatus({ data: { user_id: usuario.id, ativo } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível alterar o acesso."); } }} excluir={async () => { try { const r = await removerUsuario({ data: { user_id: usuario.id } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível excluir."); } }} />)}</div></section>
+        <section><h2 className="text-lg font-bold">Usuários cadastrados</h2><div className="mt-4 space-y-3">{dados.usuarios.map((usuario) => <Usuario key={usuario.id} usuario={usuario} lojas={dados.lojas} editar={async (valores) => { try { const r = await salvarEdicao({ data: { user_id: usuario.id, ...valores } }); if (!r.ok) { toast.error(r.mensagem); return false; } toast.success(r.mensagem); await carregar(); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); return false; } }} salvar={async (loja_ids) => { try { await salvarVinculos({ data: { user_id: usuario.id, loja_ids } }); toast.success("Lojas atualizadas."); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); } }} alterarStatus={async (ativo) => { try { const r = await mudarStatus({ data: { user_id: usuario.id, ativo } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível alterar o acesso."); } }} excluir={async () => { try { const r = await removerUsuario({ data: { user_id: usuario.id } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível excluir."); } }} />)}</div></section>
       </div>}
     </main></div>;
 }
@@ -141,7 +143,7 @@ function LinhaLoja({ loja, salvar }: { loja: DadosAdmin["lojas"][number]; salvar
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) { return <div><Label className="mb-2 block">{label}</Label>{children}</div>; }
 function SelecaoLojas({ lojas, selecionadas, onChange }: { lojas: DadosAdmin["lojas"]; selecionadas: string[]; onChange: (ids: string[]) => void }) { return <fieldset><legend className="mb-2 text-sm font-medium">Lojas permitidas</legend><div className="max-h-52 space-y-1 overflow-y-auto border p-2">{lojas.map((loja) => <label key={loja.id} className="flex cursor-pointer items-center gap-3 p-2 text-sm hover:bg-accent"><input type="checkbox" className="size-4 accent-primary" checked={selecionadas.includes(loja.id)} onChange={(e) => onChange(e.target.checked ? [...selecionadas, loja.id] : selecionadas.filter((id) => id !== loja.id))} /><span>{loja.rede ? `${loja.rede} — ` : ""}{loja.nome}</span></label>)}</div></fieldset>; }
-function Usuario({ usuario, lojas, salvar, alterarStatus, excluir }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; salvar: (ids: string[]) => Promise<void>; alterarStatus: (ativo: boolean) => Promise<void>; excluir: () => Promise<void> }) {
+function Usuario({ usuario, lojas, editar, salvar, alterarStatus, excluir }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; editar: (v: { nome: string; role: "admin" | "analista" | "loja"; loja_ids: string[] }) => Promise<boolean>; salvar: (ids: string[]) => Promise<void>; alterarStatus: (ativo: boolean) => Promise<void>; excluir: () => Promise<void> }) {
   const [ids, setIds] = useState(usuario.loja_ids);
   const [editando, setEditando] = useState(false);
   const vinculadas = lojas.filter((l) => usuario.loja_ids.includes(l.id));
@@ -149,6 +151,20 @@ function Usuario({ usuario, lojas, salvar, alterarStatus, excluir }: { usuario: 
   const editavel = usuario.roles.includes("loja");
   const acessoTotal = usuario.roles.includes("admin") || usuario.roles.includes("analista");
   const ativo = usuario.ativo !== false;
+  const roleAtual = usuario.roles.includes("admin") ? "admin" : usuario.roles.includes("analista") ? "analista" : "loja";
+  const [editUser, setEditUser] = useState(false);
+  const [nomeEd, setNomeEd] = useState(usuario.nome ?? "");
+  const [roleEd, setRoleEd] = useState<"admin" | "analista" | "loja">(roleAtual);
+  const [idsEd, setIdsEd] = useState<string[]>(usuario.loja_ids);
+  const [salvandoEd, setSalvandoEd] = useState(false);
+  if (editUser) return <div className="space-y-4 border border-primary bg-card p-5">
+    <div><strong>Editar usuário</strong><p className="mt-1 text-sm text-muted-foreground">{usuario.email}</p></div>
+    <Campo label="Nome"><Input value={nomeEd} onChange={(e) => setNomeEd(e.target.value)} /></Campo>
+    <Campo label="Perfil"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={roleEd} onChange={(e) => setRoleEd(e.target.value as typeof roleEd)}><option value="loja">Usuário de loja</option><option value="analista">Analista Trebeschi</option><option value="admin">Administrador</option></select></Campo>
+    {roleEd === "loja" ? <SelecaoLojas lojas={lojas} selecionadas={idsEd} onChange={setIdsEd} /> : <p className="text-sm text-muted-foreground">Acesso total — este perfil visualiza as solicitações de todas as lojas.</p>}
+    {roleEd === "loja" && idsEd.length === 0 && <p className="text-xs text-destructive">Selecione pelo menos uma loja.</p>}
+    <div className="flex gap-2"><Button size="sm" disabled={salvandoEd || nomeEd.trim().length < 2 || (roleEd === "loja" && idsEd.length === 0)} onClick={async () => { setSalvandoEd(true); const ok = await editar({ nome: nomeEd.trim(), role: roleEd, loja_ids: roleEd === "loja" ? idsEd : [] }); setSalvandoEd(false); if (ok) setEditUser(false); }}>{salvandoEd && <Loader2 className="animate-spin" />} Salvar alterações</Button><Button variant="ghost" size="sm" onClick={() => setEditUser(false)}>Cancelar</Button></div>
+  </div>;
   return <div className="border bg-card p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div><strong>{usuario.nome || "Sem nome"}</strong><p className="mt-1 text-sm text-muted-foreground">{usuario.email}</p></div>
@@ -164,6 +180,7 @@ function Usuario({ usuario, lojas, salvar, alterarStatus, excluir }: { usuario: 
       {editavel && editando && <div className="mt-3"><SelecaoLojas lojas={lojas} selecionadas={ids} onChange={setIds} /><div className="mt-3 flex gap-2"><Button size="sm" disabled={ids.length === 0} onClick={async () => { await salvar(ids); setEditando(false); }}>Salvar lojas</Button><Button variant="ghost" size="sm" onClick={() => { setIds(usuario.loja_ids); setEditando(false); }}>Cancelar</Button></div>{ids.length === 0 && <p className="mt-2 text-xs text-destructive">Selecione pelo menos uma loja.</p>}</div>}
     </div>
     <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
+      <Button variant="outline" size="sm" onClick={() => { setNomeEd(usuario.nome ?? ""); setRoleEd(roleAtual); setIdsEd(usuario.loja_ids); setEditUser(true); }}><Pencil /> Editar usuário</Button>
       <Button variant="outline" size="sm" onClick={() => alterarStatus(!ativo)}>{ativo ? <><Ban /> Inativar acesso</> : <><RotateCcw /> Reativar acesso</>}</Button>
       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { if (window.confirm(`Excluir definitivamente ${usuario.email}? Só é possível se não houver nada vinculado.`)) void excluir(); }}><Trash2 /> Excluir</Button>
     </div>
