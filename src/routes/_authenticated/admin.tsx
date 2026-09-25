@@ -143,6 +143,8 @@ function Campo({ label, children }: { label: string; children: React.ReactNode }
 function SelecaoLojas({ lojas, selecionadas, onChange }: { lojas: DadosAdmin["lojas"]; selecionadas: string[]; onChange: (ids: string[]) => void }) { return <fieldset><legend className="mb-2 text-sm font-medium">Lojas permitidas</legend><div className="max-h-52 space-y-1 overflow-y-auto border p-2">{lojas.map((loja) => <label key={loja.id} className="flex cursor-pointer items-center gap-3 p-2 text-sm hover:bg-accent"><input type="checkbox" className="size-4 accent-primary" checked={selecionadas.includes(loja.id)} onChange={(e) => onChange(e.target.checked ? [...selecionadas, loja.id] : selecionadas.filter((id) => id !== loja.id))} /><span>{loja.rede ? `${loja.rede} — ` : ""}{loja.nome}</span></label>)}</div></fieldset>; }
 function Usuario({ usuario, lojas, salvar, alterarStatus, excluir }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; salvar: (ids: string[]) => Promise<void>; alterarStatus: (ativo: boolean) => Promise<void>; excluir: () => Promise<void> }) {
   const [ids, setIds] = useState(usuario.loja_ids);
+  const [editando, setEditando] = useState(false);
+  const vinculadas = lojas.filter((l) => usuario.loja_ids.includes(l.id));
   const perfil = usuario.roles.includes("admin") ? "Administrador" : usuario.roles.includes("analista") ? "Analista" : "Usuário de loja";
   const editavel = usuario.roles.includes("loja");
   const ativo = usuario.ativo !== false;
@@ -154,7 +156,11 @@ function Usuario({ usuario, lojas, salvar, alterarStatus, excluir }: { usuario: 
         <span className="rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">{perfil}</span>
       </div>
     </div>
-    {editavel && <div className="mt-4"><SelecaoLojas lojas={lojas} selecionadas={ids} onChange={setIds} /><Button variant="outline" size="sm" className="mt-3" onClick={() => salvar(ids)}>Salvar lojas</Button></div>}
+    {editavel && <div className="mt-4">
+      <div className="flex items-center justify-between"><p className="text-sm font-medium">Lojas com acesso ({vinculadas.length})</p>{!editando && <Button variant="outline" size="sm" onClick={() => { setIds(usuario.loja_ids); setEditando(true); }}><Pencil /> Editar lojas</Button>}</div>
+      {!editando && (vinculadas.length === 0 ? <p className="mt-2 text-sm text-destructive">Nenhuma loja vinculada — este usuário não vê nenhuma solicitação.</p> : <div className="mt-2 flex flex-wrap gap-2">{vinculadas.map((l) => <span key={l.id} className="rounded-md border bg-muted px-2 py-1 text-xs">{l.rede ? `${l.rede} — ` : ""}{l.nome} ({l.codigo})</span>)}</div>)}
+      {editando && <div className="mt-3"><SelecaoLojas lojas={lojas} selecionadas={ids} onChange={setIds} /><div className="mt-3 flex gap-2"><Button size="sm" disabled={ids.length === 0} onClick={async () => { await salvar(ids); setEditando(false); }}>Salvar lojas</Button><Button variant="ghost" size="sm" onClick={() => { setIds(usuario.loja_ids); setEditando(false); }}>Cancelar</Button></div>{ids.length === 0 && <p className="mt-2 text-xs text-destructive">Selecione pelo menos uma loja.</p>}</div>}
+    </div>}
     <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
       <Button variant="outline" size="sm" onClick={() => alterarStatus(!ativo)}>{ativo ? <><Ban /> Inativar acesso</> : <><RotateCcw /> Reativar acesso</>}</Button>
       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { if (window.confirm(`Excluir definitivamente ${usuario.email}? Só é possível se não houver nada vinculado.`)) void excluir(); }}><Trash2 /> Excluir</Button>
