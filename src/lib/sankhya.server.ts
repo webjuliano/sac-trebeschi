@@ -200,22 +200,30 @@ export async function buscarAnaliseComercial(params: {
       const itens = await consultar(
         cred,
         sessao,
-        `SELECT P.DESCRPROD, I.CODPROD, CASE WHEN VOA.DM = 'D' AND VOA.FATOR > 0 THEN I.QTDNEG * VOA.FATOR WHEN VOA.DM = 'M' AND VOA.FATOR > 0 THEN I.QTDNEG / VOA.FATOR ELSE I.QTDNEG END, CASE WHEN VOA.DM = 'D' AND VOA.FATOR > 0 THEN I.VLRUNIT / VOA.FATOR WHEN VOA.DM = 'M' AND VOA.FATOR > 0 THEN I.VLRUNIT * VOA.FATOR ELSE I.VLRUNIT END, I.VLRTOT
+        `SELECT P.DESCRPROD, I.CODPROD,
+           SUM(CASE WHEN VOA.DM = 'D' AND VOA.FATOR > 0 THEN I.QTDNEG * VOA.FATOR WHEN VOA.DM = 'M' AND VOA.FATOR > 0 THEN I.QTDNEG / VOA.FATOR ELSE I.QTDNEG END) AS QTD,
+           SUM(I.VLRTOT) AS TOTAL
          FROM TGFITE I JOIN TGFPRO P ON P.CODPROD = I.CODPROD
          LEFT JOIN (SELECT CODPROD, CODVOL, MAX(DIVIDEMULTIPLICA) DM, MAX(QUANTIDADE) FATOR FROM TGFVOA GROUP BY CODPROD, CODVOL) VOA ON VOA.CODPROD = I.CODPROD AND VOA.CODVOL = I.CODVOL
-         WHERE I.NUNOTA = ${num(linha[0])}`,
+         WHERE I.NUNOTA = ${num(linha[0])}
+         GROUP BY P.DESCRPROD, I.CODPROD
+         ORDER BY P.DESCRPROD`,
       );
       nota = {
         numero: linha[1] ?? numeroNota,
         data_emissao: linha[2] ?? null,
         valor_total: num(linha[3]),
-        itens: itens.map((i) => ({
-          produto: i[0] ?? "",
-          codigo: i[1] ?? null,
-          quantidade: num(i[2]),
-          valor_unitario: num(i[3]),
-          valor_total: num(i[4]),
-        })),
+        itens: itens.map((i) => {
+          const quantidade = num(i[2]);
+          const total = num(i[3]);
+          return {
+            produto: i[0] ?? "",
+            codigo: i[1] ?? null,
+            quantidade,
+            valor_unitario: quantidade > 0 ? total / quantidade : 0,
+            valor_total: total,
+          };
+        }),
       };
     }
   }
@@ -307,21 +315,28 @@ export async function listarItensNota(codigoCliente: string, nunota: string): Pr
   const linhas = await consultar(
     cred,
     sessao,
-    `SELECT P.DESCRPROD, I.CODPROD, CASE WHEN VOA.DM = 'D' AND VOA.FATOR > 0 THEN I.QTDNEG * VOA.FATOR WHEN VOA.DM = 'M' AND VOA.FATOR > 0 THEN I.QTDNEG / VOA.FATOR ELSE I.QTDNEG END, CASE WHEN VOA.DM = 'D' AND VOA.FATOR > 0 THEN I.VLRUNIT / VOA.FATOR WHEN VOA.DM = 'M' AND VOA.FATOR > 0 THEN I.VLRUNIT * VOA.FATOR ELSE I.VLRUNIT END, I.VLRTOT, I.CODVOL
+    `SELECT P.DESCRPROD, I.CODPROD,
+       SUM(CASE WHEN VOA.DM = 'D' AND VOA.FATOR > 0 THEN I.QTDNEG * VOA.FATOR WHEN VOA.DM = 'M' AND VOA.FATOR > 0 THEN I.QTDNEG / VOA.FATOR ELSE I.QTDNEG END) AS QTD,
+       SUM(I.VLRTOT) AS TOTAL, I.CODVOL
      FROM TGFITE I JOIN TGFPRO P ON P.CODPROD = I.CODPROD
      JOIN TGFCAB C ON C.NUNOTA = I.NUNOTA
      LEFT JOIN (SELECT CODPROD, CODVOL, MAX(DIVIDEMULTIPLICA) DM, MAX(QUANTIDADE) FATOR FROM TGFVOA GROUP BY CODPROD, CODVOL) VOA ON VOA.CODPROD = I.CODPROD AND VOA.CODVOL = I.CODVOL
      WHERE I.NUNOTA = ${num(nunota)} AND C.CODPARC = '${codigo}' AND C.TIPMOV = 'V'
-     ORDER BY I.SEQUENCIA`,
+     GROUP BY P.DESCRPROD, I.CODPROD, I.CODVOL
+     ORDER BY P.DESCRPROD`,
   );
-  return linhas.map((i) => ({
-    produto: i[0] ?? "",
-    codigo: i[1] ?? null,
-    quantidade: num(i[2]),
-    valor_unitario: num(i[3]),
-    valor_total: num(i[4]),
-    unidade: i[5] ?? "",
-  }));
+  return linhas.map((i) => {
+    const quantidade = num(i[2]);
+    const total = num(i[3]);
+    return {
+      produto: i[0] ?? "",
+      codigo: i[1] ?? null,
+      quantidade,
+      valor_unitario: quantidade > 0 ? total / quantidade : 0,
+      valor_total: total,
+      unidade: i[4] ?? "",
+    };
+  });
 }
 
 export type LojaParceiro = { codparc: string; nome: string; endereco: string; numero: string; cidade: string; uf: string };
