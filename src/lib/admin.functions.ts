@@ -285,3 +285,37 @@ export const excluirUsuario = createServerFn({ method: "POST" })
     if (error) return { ok: false as const, mensagem: error.message };
     return { ok: true as const, mensagem: "Usuário excluído." };
   });
+/** Edita nome, perfil e lojas permitidas de um usuário. */
+export const editarUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({
+      user_id: z.string().uuid(),
+      nome: z.string().trim().min(2).max(120),
+      role: z.enum(["admin", "analista", "loja"]),
+      loja_ids: z.array(z.string().uuid()).max(100),
+    }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await exigirAdmin(context);
+    if (data.role === "loja" && data.loja_ids.length === 0) {
+      return { ok: false as const, mensagem: "Selecione pelo menos uma loja para este usuário." };
+    }
+    if (data.user_id === context.userId && data.role !== "admin") {
+      return { ok: false as const, mensagem: "Você não pode remover o seu próprio perfil de administrador." };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: perfilError } = await supabaseAdmin.from("profiles").update({ nome: data.nome }).eq("id", data.user_id);
+    if (perfilError) return { ok: false as const, mensagem: perfilError.message };
+    const { error: delRole } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id).neq("role", data.role);
+    if (delRole) return { ok: false as const, mensagem: delRole.message };
+    const { error: roleError } = await supabaseAdmin.from("user_roles").upsert({ user_id: data.user_id, role: data.role }, { onConflict: "user_id,role" });
+    if (roleError) return { ok: false as const, mensagem: roleError.message };
+    const { error: delLojas } = await supabaseAdmin.from("user_lojas").delete().eq("user_id", data.user_id);
+    if (delLojas) return { ok: false as const, mensagem: delLojas.message };
+    if (data.role === "loja") {
+      const { error } = await supabaseAdmin.from("user_lojas").insert([...new Set(data.loja_ids)].map((loja_id) => ({ user_id: data.user_id, loja_id })));
+      if (error) return { ok: false as const, mensagem: error.message };
+    }
+    return { ok: true as const, mensagem: "Usuário atualizado." };
+  });
