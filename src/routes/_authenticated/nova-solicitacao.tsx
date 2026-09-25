@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type FormEvent } from "react";
-import { CheckCircle2, ImagePlus, Loader2, Plus, Send, Trash2 } from "lucide-react";
+import { CheckCircle2, ImagePlus, Loader2, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalShell } from "@/components/portal-shell";
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { comprimirImagem } from "@/lib/comprimir-imagem";
-import { abrirProtocolo, listarLojasPermitidas } from "@/lib/protocolos.functions";
+import { abrirProtocolo, listarItensNotaVenda, listarLojasPermitidas, listarNotasVendaLoja } from "@/lib/protocolos.functions";
+import { data, moeda } from "@/lib/protocolo-ui";
 
 export const Route = createFileRoute("/_authenticated/nova-solicitacao")({
   head: () => ({ meta: [
@@ -24,57 +25,97 @@ export const Route = createFileRoute("/_authenticated/nova-solicitacao")({
   component: NovaSolicitacao,
 });
 
-type ItemForm = { codigo_produto: string; descricao: string; quantidade: number; unidade: string; valor_unitario: number; lote: string; motivo: string };
-const itemVazio = (): ItemForm => ({ codigo_produto: "", descricao: "", quantidade: 1, unidade: "kg", valor_unitario: 0, lote: "", motivo: "" });
+type NotaResumo = { nunota: string; numero: string; data: string | null; valor_total: number };
+type ItemNota = { produto: string; codigo: string | null; quantidade: number; valor_unitario: number; valor_total: number; unidade: string };
+type Foto = { nome: string; base64: string; bytes: number };
+type Selecao = { quantidade: number; motivo: string; fotos: Foto[] };
 
 function NovaSolicitacao() {
   const listar = useServerFn(listarLojasPermitidas);
   const abrir = useServerFn(abrirProtocolo);
+  const buscarNotas = useServerFn(listarNotasVendaLoja);
+  const buscarItens = useServerFn(listarItensNotaVenda);
   const [lojas, setLojas] = useState<Array<{ id: string; nome: string; codigo: string; rede: string | null }>>([]);
-  const [itens, setItens] = useState<ItemForm[]>([itemVazio()]);
-  const [fotos, setFotos] = useState<Array<{ nome: string; base64: string; bytes: number }>>([]);
+  const [lojaId, setLojaId] = useState("");
+  const [contato, setContato] = useState({ nome: "", email: "", telefone: "" });
+  const [notas, setNotas] = useState<NotaResumo[]>([]);
+  const [dias, setDias] = useState<number | null>(null);
+  const [carregandoNotas, setCarregandoNotas] = useState(false);
+  const [erroNotas, setErroNotas] = useState<string | null>(null);
+  const [nota, setNota] = useState<NotaResumo | null>(null);
+  const [itensNota, setItensNota] = useState<ItemNota[]>([]);
+  const [carregandoItens, setCarregandoItens] = useState(false);
+  const [selecao, setSelecao] = useState<Record<number, Selecao>>({});
+  const [processando, setProcessando] = useState<number | null>(null);
+  const [descricao, setDescricao] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const [processandoFotos, setProcessandoFotos] = useState(false);
   const [numeroCriado, setNumeroCriado] = useState<string | null>(null);
 
   useEffect(() => { listar().then(setLojas).catch(() => toast.error("Não foi possível carregar as lojas.")); }, [listar]);
 
-  function atualizarItem(index: number, campo: keyof ItemForm, valor: string | number) {
-    setItens((atuais) => atuais.map((item, i) => i === index ? { ...item, [campo]: valor } : item));
+  useEffect(() => {
+    setNotas([]); setNota(null); setItensNota([]); setSelecao({}); setErroNotas(null); setDias(null);
+    if (!lojaId) return;
+    setCarregandoNotas(true);
+    buscarNotas({ data: { loja_id: lojaId } })
+      .then((r) => { setNotas(r.notas); setDias(r.dias); })
+      .catch((e) => setErroNotas(e instanceof Error ? e.message : "Não foi possível buscar as notas no Sankhya."))
+      .finally(() => setCarregandoNotas(false));
+  }, [lojaId, buscarNotas]);
+
+  async function escolherNota(n: NotaResumo) {
+    setNota(n); setItensNota([]); setSelecao({}); setCarregandoItens(true);
+    try { setItensNota(await buscarItens({ data: { loja_id: lojaId, nunota: n.nunota } })); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Não foi possível carregar os itens da nota."); }
+    finally { setCarregandoItens(false); }
   }
 
-  async function selecionarFotos(files: FileList | null) {
-    if (!files) return;
-    const restantes = 12 - fotos.length;
-    if (files.length > restantes) toast.warning("Você pode anexar até 12 fotos.");
-    setProcessandoFotos(true);
-    try {
-      const novas = await Promise.all(Array.from(files).slice(0, restantes).map((file) => comprimirImagem(file)));
-      setFotos((atuais) => [...atuais, ...novas]);
-    } catch { toast.error("Não foi possível processar uma das fotos."); }
-    finally { setProcessandoFotos(false); }
+  function alternarItem(index: number) {
+    setSelecao((s) => { const n = { ...s }; if (n[index]) delete n[index]; else n[index] = { quantidade: 1, motivo: "", fotos: [] }; return n; });
   }
+  function atualizar(index: number, campo: Partial<Selecao>) {
+    setSelecao((s) => { const atual = s[index]; return atual ? { ...s, [index]: { ...atual, ...campo } } : s; });
+  }
+  async function adicionarFotos(index: number, files: FileList | null) {
+    if (!files) return;
+    const atual = selecao[index]?.fotos ?? [];
+    const restantes = 6 - atual.length;
+    if (files.length > restantes) toast.warning("Até 6 fotos por item.");
+    setProcessando(index);
+    try {
+      const novas = await Promise.all(Array.from(files).slice(0, restantes).map((f) => comprimirImagem(f)));
+      atualizar(index, { fotos: [...atual, ...novas] });
+    } catch { toast.error("Não foi possível processar uma das fotos."); }
+    finally { setProcessando(null); }
+  }
+
+  const selecionados = Object.entries(selecao).map(([i, s]) => ({ item: itensNota[Number(i)], sel: s, index: Number(i) })).filter((x): x is { item: ItemNota; sel: Selecao; index: number } => !!x.item);
 
   async function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    if (fotos.length < 2) { toast.error("Anexe pelo menos duas fotos das evidências."); return; }
+    if (!nota) { toast.error("Selecione a nota de venda."); return; }
+    if (selecionados.length === 0) { toast.error("Selecione ao menos um item da nota."); return; }
+    for (const { item, sel } of selecionados) {
+      if (!(sel.quantidade > 0) || sel.quantidade > item.quantidade) { toast.error(`Quantidade inválida para "${item.produto}" (máx. ${item.quantidade}).`); return; }
+      if (sel.motivo.trim().length < 3) { toast.error(`Descreva a avaria de "${item.produto}".`); return; }
+      if (sel.fotos.length === 0) { toast.error(`Anexe a foto da evidência de "${item.produto}".`); return; }
+    }
     setEnviando(true);
     try {
       const retorno = await abrir({ data: {
-        loja_id: String(form.get("loja_id")), cliente_nome: String(form.get("cliente_nome")),
-        cliente_email: String(form.get("cliente_email")), cliente_telefone: String(form.get("cliente_telefone")) || null,
-        nota_fiscal: String(form.get("nota_fiscal")) || null, pedido: String(form.get("pedido")) || null,
-        data_compra: String(form.get("data_compra")) || null, motivo: String(form.get("motivo")),
-        descricao: String(form.get("descricao")) || null, itens, fotos: fotos.map(({ nome, base64 }) => ({ nome, base64 })),
+        loja_id: lojaId, cliente_nome: contato.nome, cliente_email: contato.email, cliente_telefone: contato.telefone || null,
+        nota_fiscal: nota.numero, pedido: null, data_compra: nota.data, motivo: null, descricao: descricao || null,
+        itens: selecionados.map(({ item, sel }) => ({
+          codigo_produto: item.codigo, descricao: item.produto.slice(0, 200), quantidade: sel.quantidade, unidade: item.unidade || null,
+          valor_unitario: item.valor_unitario, lote: null, motivo: sel.motivo.trim(), fotos: sel.fotos.map(({ nome, base64 }) => ({ nome, base64 })),
+        })),
+        fotos: [],
       } });
       setNumeroCriado(retorno.numero);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível enviar a solicitação."); }
     finally { setEnviando(false); }
   }
-
-
 
   if (numeroCriado) return (
     <PortalShell>
@@ -83,10 +124,12 @@ function NovaSolicitacao() {
         <p className="mt-6 text-sm font-semibold uppercase tracking-widest text-primary">Solicitação registrada</p>
         <h1 className="mt-2 text-4xl font-bold">Protocolo {numeroCriado}</h1>
         <p className="mt-4 max-w-lg text-muted-foreground">A confirmação foi registrada para envio ao seu e-mail. Guarde o número para acompanhar a análise.</p>
-        <Button className="mt-8" onClick={() => { setNumeroCriado(null); setItens([itemVazio()]); setFotos([]); }}>Nova solicitação</Button>
+        <Button className="mt-8" onClick={() => { setNumeroCriado(null); setNota(null); setItensNota([]); setSelecao({}); setDescricao(""); }}>Nova solicitação</Button>
       </main>
     </PortalShell>
   );
+
+  const contatoOk = contato.nome.trim().length >= 2 && /.+@.+\..+/.test(contato.email);
 
   return (
     <PortalShell>
@@ -94,56 +137,62 @@ function NovaSolicitacao() {
         <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
           <p className="text-sm font-semibold uppercase tracking-widest text-primary-foreground/70">Atendimento ao cliente</p>
           <h1 className="mt-3 max-w-3xl text-3xl font-bold sm:text-4xl">Solicitação de devolução</h1>
-          <p className="mt-3 max-w-2xl text-primary-foreground/75">Informe os produtos, quantidades e evidências. Você receberá as atualizações pelo e-mail cadastrado.</p>
+          <p className="mt-3 max-w-2xl text-primary-foreground/75">Escolha a loja, informe o contato, selecione a nota de venda e os itens com problema.</p>
         </div>
       </section>
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <form onSubmit={enviar} className="space-y-10">
-          <FormSection numero="01" titulo="Loja e contato">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Campo label="Loja" className="sm:col-span-2"><select name="loja_id" required className="h-10 w-full rounded-md border bg-card px-3 text-sm"><option value="">Selecione a loja</option>{lojas.map((loja) => <option key={loja.id} value={loja.id}>{loja.rede ? `${loja.rede} — ` : ""}{loja.nome} ({loja.codigo})</option>)}</select></Campo>
-              <Campo label="Nome do solicitante"><Input name="cliente_nome" required minLength={2} /></Campo>
-              <Campo label="E-mail para atualizações"><Input name="cliente_email" type="email" required /></Campo>
-              <Campo label="Telefone"><Input name="cliente_telefone" type="tel" /></Campo>
-              <Campo label="Data da compra"><Input name="data_compra" type="date" /></Campo>
+          <FormSection numero="01" titulo="Loja">
+            <select value={lojaId} onChange={(e) => setLojaId(e.target.value)} required className="h-10 w-full rounded-md border bg-card px-3 text-sm"><option value="">Selecione a loja</option>{lojas.map((loja) => <option key={loja.id} value={loja.id}>{loja.rede ? `${loja.rede} — ` : ""}{loja.nome} ({loja.codigo})</option>)}</select>
+          </FormSection>
+          {lojaId && <FormSection numero="02" titulo="Contato do solicitante">
+            <div className="grid gap-5 sm:grid-cols-3">
+              <Campo label="Nome do solicitante"><Input required minLength={2} value={contato.nome} onChange={(e) => setContato({ ...contato, nome: e.target.value })} /></Campo>
+              <Campo label="E-mail para atualizações"><Input type="email" required value={contato.email} onChange={(e) => setContato({ ...contato, email: e.target.value })} /></Campo>
+              <Campo label="Telefone"><Input type="tel" value={contato.telefone} onChange={(e) => setContato({ ...contato, telefone: e.target.value })} /></Campo>
             </div>
-          </FormSection>
-          <FormSection numero="02" titulo="Documento e motivo">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Campo label="Nota fiscal de recebimento"><Input name="nota_fiscal" /></Campo>
-              <Campo label="Pedido"><Input name="pedido" /></Campo>
-              <Campo label="Motivo principal" className="sm:col-span-2"><Input name="motivo" required placeholder="Ex.: avaria, qualidade ou validade" /></Campo>
-              <Campo label="Descrição da ocorrência" className="sm:col-span-2"><Textarea name="descricao" rows={4} placeholder="Descreva o que aconteceu e como os produtos foram recebidos." /></Campo>
-            </div>
-          </FormSection>
-          <FormSection numero="03" titulo="Produtos">
-            <div className="space-y-5">{itens.map((item, index) => (
-              <div key={index} className="border-l-2 border-primary bg-card p-4 shadow-sm">
-                <div className="mb-4 flex items-center justify-between"><strong className="text-sm">Item {index + 1}</strong>{itens.length > 1 && <Button type="button" variant="ghost" size="icon" aria-label="Remover item" title="Remover item" onClick={() => setItens((atuais) => atuais.filter((_, i) => i !== index))}><Trash2 /></Button>}</div>
-                <div className="grid gap-4 sm:grid-cols-6">
-                  <Campo label="Código" className="sm:col-span-2"><Input value={item.codigo_produto} onChange={(e) => atualizarItem(index, "codigo_produto", e.target.value)} /></Campo>
-                  <Campo label="Produto" className="sm:col-span-4"><Input required value={item.descricao} onChange={(e) => atualizarItem(index, "descricao", e.target.value)} /></Campo>
-                  <Campo label="Quantidade" className="sm:col-span-2"><Input type="number" min="0.01" step="0.01" required value={item.quantidade} onChange={(e) => atualizarItem(index, "quantidade", Number(e.target.value))} /></Campo>
-                  <Campo label="Unidade"><Input value={item.unidade} onChange={(e) => atualizarItem(index, "unidade", e.target.value)} /></Campo>
-                  <Campo label="Valor unitário" className="sm:col-span-2"><Input type="number" min="0" step="0.01" value={item.valor_unitario} onChange={(e) => atualizarItem(index, "valor_unitario", Number(e.target.value))} /></Campo>
-                  <Campo label="Lote"><Input value={item.lote} onChange={(e) => atualizarItem(index, "lote", e.target.value)} /></Campo>
-                  <Campo label="Avaria do item" className="sm:col-span-6"><Input value={item.motivo} onChange={(e) => atualizarItem(index, "motivo", e.target.value)} placeholder="Descreva a avaria deste produto" /></Campo>
-                </div>
-              </div>
-            ))}</div>
-            <Button type="button" variant="outline" className="mt-4" onClick={() => setItens((atuais) => [...atuais, itemVazio()])}><Plus /> Adicionar produto</Button>
-          </FormSection>
-          <FormSection numero="04" titulo="Evidências fotográficas">
-            <label className="flex min-h-36 cursor-pointer flex-col items-center justify-center border border-dashed border-primary/50 bg-primary/5 p-6 text-center">
-              {processandoFotos ? <Loader2 className="size-7 animate-spin text-primary" /> : <ImagePlus className="size-7 text-primary" />}
-              <span className="mt-3 text-sm font-semibold">Adicionar fotos</span><span className="mt-1 text-xs text-muted-foreground">Mínimo 2, máximo 12. As imagens serão reduzidas automaticamente.</span>
-              <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => selecionarFotos(e.target.files)} />
-            </label>
-            {fotos.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{fotos.map((foto, index) => <div key={`${foto.nome}-${index}`} className="relative border bg-card p-2"><img src={`data:image/jpeg;base64,${foto.base64}`} alt={`Evidência ${index + 1}`} className="aspect-square w-full object-cover" /><Button type="button" variant="destructive" size="icon" className="absolute right-3 top-3 size-7" aria-label="Excluir foto" onClick={() => setFotos((atuais) => atuais.filter((_, i) => i !== index))}><Trash2 /></Button><p className="mt-2 truncate text-xs text-muted-foreground">{Math.round(foto.bytes / 1024)} KB</p></div>)}</div>}
-          </FormSection>
-          <div className="flex items-center justify-end border-t pt-6"><Button type="submit" size="lg" disabled={enviando || processandoFotos}>{enviando ? <Loader2 className="animate-spin" /> : <Send />} Enviar solicitação</Button></div>
+          </FormSection>}
+          {lojaId && contatoOk && <FormSection numero="03" titulo="Nota de venda">
+            {dias && <p className="mb-3 text-sm text-muted-foreground">Vendas dos últimos {dias} dias.</p>}
+            {carregandoNotas ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Buscando notas no Sankhya…</p>
+              : erroNotas ? <p className="text-sm text-destructive">{erroNotas}</p>
+              : notas.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma nota de venda encontrada no período.</p>
+              : <div className="max-h-72 overflow-y-auto border bg-card">{notas.map((n) => (
+                <button type="button" key={n.nunota} onClick={() => escolherNota(n)} className={`flex w-full items-center justify-between border-b px-4 py-3 text-left text-sm last:border-0 hover:bg-accent ${nota?.nunota === n.nunota ? "bg-primary/10 font-semibold" : ""}`}>
+                  <span>NF {n.numero}</span><span className="text-muted-foreground">{n.data ? data(n.data) : "—"}</span><span>{moeda(n.valor_total)}</span>
+                </button>))}</div>}
+          </FormSection>}
+          {nota && <FormSection numero="04" titulo={`Itens da NF ${nota.numero}`}>
+            {carregandoItens ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Carregando itens…</p> : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Marque os itens com problema. Para cada um, informe a quantidade, a avaria e a foto da evidência.</p>
+                {itensNota.map((item, index) => { const sel = selecao[index]; return (
+                  <div key={index} className={`border bg-card p-4 ${sel ? "border-l-2 border-l-primary shadow-sm" : ""}`}>
+                    <label className="flex cursor-pointer items-center gap-3">
+                      <input type="checkbox" className="size-4 accent-primary" checked={!!sel} onChange={() => alternarItem(index)} />
+                      <span className="flex-1 text-sm"><strong>{item.produto}</strong> <span className="text-muted-foreground">({item.codigo})</span></span>
+                      <span className="text-xs text-muted-foreground">{item.quantidade} {item.unidade} × {moeda(item.valor_unitario)}</span>
+                    </label>
+                    {sel && <div className="mt-4 grid gap-4 sm:grid-cols-6">
+                      <Campo label={`Qtd. solicitada (máx. ${item.quantidade})`} className="sm:col-span-2"><Input type="number" min="0.01" step="0.01" max={item.quantidade} required value={sel.quantidade} onChange={(e) => atualizar(index, { quantidade: Number(e.target.value) })} /></Campo>
+                      <Campo label="Avaria do item *" className="sm:col-span-4"><Input required minLength={3} value={sel.motivo} onChange={(e) => atualizar(index, { motivo: e.target.value })} placeholder="Descreva o problema deste produto" /></Campo>
+                      <div className="sm:col-span-6">
+                        <Label className="mb-2 block">Evidência do item *</Label>
+                        <div className="flex flex-wrap gap-3">
+                          {sel.fotos.map((foto, fi) => <div key={fi} className="relative"><img src={`data:image/jpeg;base64,${foto.base64}`} alt={`Evidência ${fi + 1}`} className="size-24 border object-cover" /><Button type="button" variant="destructive" size="icon" className="absolute right-1 top-1 size-6" aria-label="Excluir foto" onClick={() => atualizar(index, { fotos: sel.fotos.filter((_, i) => i !== fi) })}><Trash2 /></Button></div>)}
+                          <label className="flex size-24 cursor-pointer flex-col items-center justify-center border border-dashed border-primary/50 bg-primary/5 text-center text-xs">
+                            {processando === index ? <Loader2 className="size-5 animate-spin text-primary" /> : <ImagePlus className="size-5 text-primary" />}<span className="mt-1">Adicionar</span>
+                            <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => { void adicionarFotos(index, e.target.files); e.target.value = ""; }} />
+                          </label>
+                        </div>
+                      </div>
+                    </div>}
+                  </div>); })}
+                <Campo label="Observações gerais (opcional)"><Textarea rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)} /></Campo>
+              </div>)}
+          </FormSection>}
+          <div className="flex items-center justify-end border-t pt-6"><Button type="submit" size="lg" disabled={enviando || processando !== null || selecionados.length === 0}>{enviando ? <Loader2 className="animate-spin" /> : <Send />} Enviar solicitação</Button></div>
         </form>
-
       </main>
     </PortalShell>
   );
