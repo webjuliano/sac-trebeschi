@@ -7,6 +7,7 @@ const lojaSchema = z.object({
   nome: z.string().trim().min(2).max(120),
   codigo: z.string().trim().min(1).max(40),
   codigo_sankhya: z.string().trim().min(1).max(40),
+  dias_vendas: z.number().int().min(1).max(365),
   rede: z.string().trim().max(120).optional().nullable(),
   cnpj: z.string().trim().max(24).optional().nullable(),
   email_contato: z.string().trim().email().max(160).optional().nullable().or(z.literal("")),
@@ -82,6 +83,7 @@ export const criarLoja = createServerFn({ method: "POST" })
       nome: data.nome,
       codigo: data.codigo.toUpperCase(),
       codigo_sankhya: data.codigo_sankhya,
+      dias_vendas: data.dias_vendas,
       rede: data.rede || null,
       cnpj: data.cnpj || null,
       email_contato: data.email_contato || null,
@@ -95,7 +97,7 @@ export const atualizarCodigoSankhya = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
-      .object({ loja_id: z.string().uuid(), codigo_sankhya: z.string().trim().max(40) })
+      .object({ loja_id: z.string().uuid(), codigo_sankhya: z.string().trim().max(40), dias_vendas: z.number().int().min(1).max(365) })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
@@ -103,7 +105,7 @@ export const atualizarCodigoSankhya = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("lojas")
-      .update({ codigo_sankhya: data.codigo_sankhya || null })
+      .update({ codigo_sankhya: data.codigo_sankhya || null, dias_vendas: data.dias_vendas })
       .eq("id", data.loja_id);
     if (error) {
       throw new Error(
