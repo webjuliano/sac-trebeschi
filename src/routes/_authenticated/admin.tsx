@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type FormEvent } from "react";
-import { Ban, Building2, Download, Search, X, Loader2, Pencil, Plus, RotateCcw, ShieldCheck, Store, Trash2, Users } from "lucide-react";
+import { Ban, Building2, Download, KeyRound, Search, X, Loader2, Pencil, Plus, RotateCcw, ShieldCheck, Store, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalHeader } from "@/components/portal-header";
@@ -14,6 +14,7 @@ import {
   criarLoja,
   criarUsuario,
   definirStatusUsuario,
+  redefinirSenhaUsuario,
   excluirUsuario,
   editarUsuario,
   listarAdministracao,
