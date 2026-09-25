@@ -317,14 +317,18 @@ export async function listarItensNota(codigoCliente: string, nunota: string): Pr
      GROUP BY P.DESCRPROD, I.CODPROD, I.CODVOL
      ORDER BY P.DESCRPROD`,
   );
-  return linhas.map((i) => ({
-    produto: i[0] ?? "",
-    codigo: i[1] ?? null,
-    quantidade: num(i[2]),
-    valor_unitario: num(i[3]),
-    valor_total: num(i[4]),
-    unidade: i[5] ?? "",
-  }));
+  return linhas.map((i) => {
+    const quantidade = num(i[2]);
+    const total = num(i[3]);
+    return {
+      produto: i[0] ?? "",
+      codigo: i[1] ?? null,
+      quantidade,
+      valor_unitario: quantidade > 0 ? total / quantidade : 0,
+      valor_total: total,
+      unidade: i[4] ?? "",
+    };
+  });
 }
 
 export type LojaParceiro = { codparc: string; nome: string; endereco: string; numero: string; cidade: string; uf: string };
