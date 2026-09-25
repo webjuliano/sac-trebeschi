@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { ArrowRight, Search } from "lucide-react";
+import { ArrowRight, Search , FileUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalShell } from "@/components/portal-shell";
@@ -76,7 +76,7 @@ function Solicitacoes() {
               <span className="text-sm font-medium">{p.loja_nome}</span>
               <span className="text-sm text-muted-foreground">{p.cliente_nome}</span>
               <span className="truncate text-sm text-muted-foreground">{p.motivo}</span>
-              <span><span className={`rounded-full px-2 py-1 text-xs font-semibold ${STATUS_CLASSE[p.status] ?? "bg-muted"}`}>{STATUS_LABEL[p.status] ?? p.status}</span></span>
+              <span><span className={`rounded-full px-2 py-1 text-xs font-semibold ${STATUS_CLASSE[p.status] ?? "bg-muted"}`}>{STATUS_LABEL[p.status] ?? p.status}</span>{p.status === "aguardando_nf" && <span title="Anexar nota fiscal" className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-primary"><FileUp className="size-4" /> Anexar NF</span>}</span>
               <span className="text-xs text-muted-foreground">{dataHora(p.created_at)}</span>
               <ArrowRight className="hidden size-4 text-muted-foreground lg:block" />
             </Link>
