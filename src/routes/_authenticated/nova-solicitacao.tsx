@@ -74,7 +74,7 @@ function NovaSolicitacao() {
     setSelecao((s) => { const n = { ...s }; if (n[index]) delete n[index]; else n[index] = { quantidade: 1, motivo: "", fotos: [] }; return n; });
   }
   function atualizar(index: number, campo: Partial<Selecao>) {
-    setSelecao((s) => ({ ...s, [index]: { ...s[index], ...campo } }));
+    setSelecao((s) => { const atual = s[index]; return atual ? { ...s, [index]: { ...atual, ...campo } } : s; });
   }
   async function adicionarFotos(index: number, files: FileList | null) {
     if (!files) return;
@@ -89,7 +89,7 @@ function NovaSolicitacao() {
     finally { setProcessando(null); }
   }
 
-  const selecionados = Object.entries(selecao).map(([i, s]) => ({ item: itensNota[Number(i)], sel: s, index: Number(i) })).filter((x) => x.item);
+  const selecionados = Object.entries(selecao).map(([i, s]) => ({ item: itensNota[Number(i)], sel: s, index: Number(i) })).filter((x): x is { item: ItemNota; sel: Selecao; index: number } => !!x.item);
 
   async function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
