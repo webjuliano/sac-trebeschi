@@ -3,10 +3,41 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const hashSchema = z.string().regex(/^[a-f0-9]{64}$/);
+
 const fotoSchema = z.object({
   nome: z.string().trim().min(1).max(200),
   base64: z.string().min(10).max(3_500_000),
+  hash: hashSchema.optional().nullable(),
 });
+
+type AdminClient = (typeof import("@/integrations/supabase/client.server"))["supabaseAdmin"];
+
+/** Retorna os hashes já usados em outras solicitações, com o número do protocolo. */
+async function hashesJaUsados(admin: AdminClient, hashes: string[]) {
+  const mapa = new Map<string, string>();
+  if (hashes.length === 0) return mapa;
+  const { data, error } = await admin
+    .from("protocolo_fotos")
+    .select("hash, protocolos(numero)")
+    .in("hash", hashes);
+  if (error) throw new Error(error.message);
+  for (const linha of data ?? []) {
+    const numero = (linha.protocolos as { numero: string } | null)?.numero ?? "anterior";
+    if (linha.hash && !mapa.has(linha.hash)) mapa.set(linha.hash, numero);
+  }
+  return mapa;
+}
+
+/** Verifica, no momento de anexar, se as fotos já foram usadas em outra solicitação. */
+export const verificarFotosUsadas = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ hashes: z.array(hashSchema).max(20) }).parse(data))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const mapa = await hashesJaUsados(supabaseAdmin, data.hashes);
+    return Array.from(mapa, ([hash, numero]) => ({ hash, numero }));
+  });
 
 const itemSchema = z.object({
   codigo_produto: z.string().trim().max(60).optional().nullable(),
@@ -76,6 +107,18 @@ export const abrirProtocolo = createServerFn({ method: "POST" })
       .maybeSingle();
     if (lojaError) throw new Error(lojaError.message);
     if (!loja) throw new Error("Loja não encontrada.");
+
+    const todosHashes = [...data.itens.flatMap((i) => i.fotos), ...data.fotos]
+      .map((f) => f.hash)
+      .filter((h): h is string => !!h);
+    if (new Set(todosHashes).size !== todosHashes.length) {
+      throw new Error("A mesma foto foi anexada mais de uma vez. Remova as fotos repetidas.");
+    }
+    const usados = await hashesJaUsados(supabaseAdmin, todosHashes);
+    if (usados.size > 0) {
+      const protocolos = Array.from(new Set(usados.values())).join(", ");
+      throw new Error(`Há fotos já usadas em outra solicitação (${protocolos}). Envie fotos novas.`);
+    }
 
     const valorTotal = data.itens.reduce(
       (total, item) => total + item.quantidade * item.valor_unitario,
