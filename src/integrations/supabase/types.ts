@@ -194,6 +194,7 @@ export type Database = {
           created_at: string
           expurgada: boolean
           expurgada_em: string | null
+          hash: string | null
           id: string
           item_id: string | null
           protocolo_id: string
@@ -205,6 +206,7 @@ export type Database = {
           created_at?: string
           expurgada?: boolean
           expurgada_em?: string | null
+          hash?: string | null
           id?: string
           item_id?: string | null
           protocolo_id: string
@@ -216,6 +218,7 @@ export type Database = {
           created_at?: string
           expurgada?: boolean
           expurgada_em?: string | null
+          hash?: string | null
           id?: string
           item_id?: string | null
           protocolo_id?: string
