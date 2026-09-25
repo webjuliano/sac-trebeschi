@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { LineChart, Loader2, Search } from "lucide-react";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { PortalShell } from "@/components/portal-shell";
 import { Input } from "@/components/ui/input";
+import { obterMeuAcesso } from "@/lib/admin.functions";
 import { listarParaAnalise } from "@/lib/analise.functions";
 import { STATUS_CLASSE, STATUS_LABEL, dataHora, moeda } from "@/lib/protocolo-ui";
 
