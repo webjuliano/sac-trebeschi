@@ -42,6 +42,7 @@ export type Database = {
           codigo: string
           codigo_sankhya: string | null
           created_at: string
+          dias_vendas: number
           email_contato: string | null
           id: string
           nome: string
@@ -54,6 +55,7 @@ export type Database = {
           codigo: string
           codigo_sankhya?: string | null
           created_at?: string
+          dias_vendas?: number
           email_contato?: string | null
           id?: string
           nome: string
@@ -66,6 +68,7 @@ export type Database = {
           codigo?: string
           codigo_sankhya?: string | null
           created_at?: string
+          dias_vendas?: number
           email_contato?: string | null
           id?: string
           nome?: string
