@@ -40,5 +40,8 @@ export function dataHora(valor: string | null | undefined) {
 
 export function data(valor: string | null | undefined) {
   if (!valor) return "—";
+  // Datas puras (YYYY-MM-DD) não devem sofrer conversão de fuso horário
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(new Date(valor));
 }
