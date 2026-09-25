@@ -214,6 +214,28 @@ export const definirStatusUsuario = createServerFn({ method: "POST" })
     return { ok: true as const, mensagem: data.ativo ? "Acesso reativado." : "Acesso inativado." };
   });
 
+/** Redefine a senha de um usuário (somente administrador). */
+export const redefinirSenhaUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        user_id: z.string().uuid(),
+        senha: z.string().min(6, "A senha precisa ter pelo menos 6 caracteres.").max(72),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await exigirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      password: data.senha,
+    });
+    if (error) return { ok: false as const, mensagem: error.message };
+    return { ok: true as const, mensagem: "Senha alterada com sucesso." };
+  });
+
+
 /** Exclui o usuário somente quando não há nenhum vínculo na base. */
 export const excluirUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

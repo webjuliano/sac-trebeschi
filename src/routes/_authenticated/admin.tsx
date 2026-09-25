@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type FormEvent } from "react";
-import { Ban, Building2, Download, Search, X, Loader2, Pencil, Plus, RotateCcw, ShieldCheck, Store, Trash2, Users } from "lucide-react";
+import { Ban, Building2, Download, KeyRound, Search, X, Loader2, Pencil, Plus, RotateCcw, ShieldCheck, Store, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalHeader } from "@/components/portal-header";
@@ -14,6 +14,7 @@ import {
   criarLoja,
   criarUsuario,
   definirStatusUsuario,
+  redefinirSenhaUsuario,
   excluirUsuario,
   editarUsuario,
   listarAdministracao,
@@ -149,6 +150,7 @@ function SelecaoLojas({ lojas, selecionadas, onChange }: { lojas: DadosAdmin["lo
 function Usuario({ usuario, lojas, editar, salvar, alterarStatus, excluir }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; editar: (v: { nome: string; role: "admin" | "analista" | "loja"; loja_ids: string[] }) => Promise<boolean>; salvar: (ids: string[]) => Promise<void>; alterarStatus: (ativo: boolean) => Promise<void>; excluir: () => Promise<void> }) {
   const [ids, setIds] = useState(usuario.loja_ids);
   const [editando, setEditando] = useState(false);
+  const redefinirSenha = useServerFn(redefinirSenhaUsuario);
   const vinculadas = lojas.filter((l) => usuario.loja_ids.includes(l.id));
   const perfil = usuario.roles.includes("admin") ? "Administrador" : usuario.roles.includes("analista") ? "Analista" : "Usuário de loja";
   const editavel = usuario.roles.includes("loja");
@@ -184,6 +186,7 @@ function Usuario({ usuario, lojas, editar, salvar, alterarStatus, excluir }: { u
     </div>
     <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
       <Button variant="outline" size="sm" onClick={() => { setNomeEd(usuario.nome ?? ""); setRoleEd(roleAtual); setIdsEd(usuario.loja_ids); setEditUser(true); }}><Pencil /> Editar usuário</Button>
+      <Button variant="outline" size="sm" onClick={async () => { const senha = window.prompt(`Nova senha para ${usuario.email} (mínimo 6 caracteres):`); if (senha === null) return; if (senha.length < 6) { toast.error("A senha precisa ter pelo menos 6 caracteres."); return; } try { const r = await redefinirSenha({ data: { user_id: usuario.id, senha } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível alterar a senha."); } }}><KeyRound /> Redefinir senha</Button>
       <Button variant="outline" size="sm" onClick={() => alterarStatus(!ativo)}>{ativo ? <><Ban /> Inativar acesso</> : <><RotateCcw /> Reativar acesso</>}</Button>
       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { if (window.confirm(`Excluir definitivamente ${usuario.email}? Só é possível se não houver nada vinculado.`)) void excluir(); }}><Trash2 /> Excluir</Button>
     </div>
