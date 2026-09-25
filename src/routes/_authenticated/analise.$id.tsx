@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Package, Pencil, ReceiptText, TrendingUp } from "lucide-react";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { obterMeuAcesso } from "@/lib/admin.functions";
 import { corrigirDadosVenda, obterAnaliseComercial, registrarSnapshotAnalise } from "@/lib/analise.functions";
 import { obterProtocolo, registrarDecisao } from "@/lib/protocolos.functions";
 import { APROVACAO_LABEL, STATUS_CLASSE, STATUS_LABEL, STATUS_OPCOES, data as formatarData, dataHora, moeda } from "@/lib/protocolo-ui";
@@ -30,7 +31,9 @@ const pct = (valor: number | null) =>
 
 function AnaliseDetalhePage() {
   const { id } = Route.useParams();
+  const navegar = useNavigate();
   const obter = useServerFn(obterProtocolo);
+  const obterAcesso = useServerFn(obterMeuAcesso);
   const obterComercial = useServerFn(obterAnaliseComercial);
   const decidir = useServerFn(registrarDecisao);
   const gravarSnapshot = useServerFn(registrarSnapshotAnalise);
@@ -38,6 +41,8 @@ function AnaliseDetalhePage() {
 
 
   const [dados, setDados] = useState<Awaited<ReturnType<typeof obterProtocolo>> | null>(null);
+  const [podeAnalisar, setPodeAnalisar] = useState(false);
+  const [verificandoAcesso, setVerificandoAcesso] = useState(true);
   const [comercial, setComercial] = useState<Awaited<ReturnType<typeof obterAnaliseComercial>> | null>(null);
   const [carregandoComercial, setCarregandoComercial] = useState(true);
   const [status, setStatus] = useState("em_analise");
@@ -51,8 +56,11 @@ function AnaliseDetalhePage() {
 
   async function carregar() {
     try {
-      const retorno = await obter({ data: { id } });
+      const [retorno, acesso] = await Promise.all([obter({ data: { id } }), obterAcesso()]);
       setDados(retorno);
+      const equipe = acesso.roles.includes("admin") || acesso.roles.includes("analista");
+      setPodeAnalisar(equipe);
+      setVerificandoAcesso(false);
       setStatus(retorno.protocolo.status === "aberto" ? "em_analise" : retorno.protocolo.status);
       setAprovacao(retorno.protocolo.aprovacao ?? "");
       setParecer(retorno.protocolo.parecer ?? "");
@@ -61,6 +69,7 @@ function AnaliseDetalhePage() {
       setQuantidades(Object.fromEntries(retorno.itens.map((item) => [item.id, Number(item.quantidade_aceita ?? item.quantidade)])));
     } catch {
       toast.error("Não foi possível carregar esta solicitação.");
+      setVerificandoAcesso(false);
     }
   }
 
@@ -77,7 +86,14 @@ function AnaliseDetalhePage() {
 
   useEffect(() => { void carregar(); }, [id]);
 
-  useEffect(() => { void carregarComercial(); }, [id]);
+  useEffect(() => { void carregarComercial(); }, [id, podeAnalisar]);
+
+  // Usuário de loja não vê a análise comercial: volta para a tela da solicitação dele.
+  useEffect(() => {
+    if (!verificandoAcesso && !podeAnalisar) {
+      void navegar({ to: "/protocolos/$id", params: { id }, replace: true });
+    }
+  }, [verificandoAcesso, podeAnalisar, id, navegar]);
 
   async function corrigirVenda(event: FormEvent) {
     event.preventDefault();
@@ -130,6 +146,10 @@ function AnaliseDetalhePage() {
     } finally {
       setSalvando(false);
     }
+  }
+
+  if (!verificandoAcesso && !podeAnalisar) {
+    return <PortalShell><p className="p-16 text-center text-sm text-muted-foreground">Redirecionando para a sua solicitação…</p></PortalShell>;
   }
 
   if (!dados) {

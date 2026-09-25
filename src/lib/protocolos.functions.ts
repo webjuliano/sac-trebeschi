@@ -285,7 +285,7 @@ export const obterProtocolo = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!protocolo) throw new Error("Protocolo não encontrado.");
 
-    const [itens, fotos, eventos] = await Promise.all([
+    const [itens, fotos, eventos, acesso] = await Promise.all([
       context.supabase
         .from("protocolo_itens")
         .select("*")
@@ -301,7 +301,14 @@ export const obterProtocolo = createServerFn({ method: "POST" })
         .select("*")
         .eq("protocolo_id", data.id)
         .order("created_at"),
+      context.supabase.rpc("is_equipe", { _user_id: context.userId }),
     ]);
+
+    // Registros internos (análise comercial, correções de dados da venda) só para a equipe Trebeschi.
+    const tiposInternos = new Set(["analise_comercial", "correcao_dados_venda"]);
+    const eventosVisiveis = acesso.data
+      ? eventos.data ?? []
+      : (eventos.data ?? []).filter((evento) => !tiposInternos.has(evento.tipo));
 
     const fotosComUrl = await Promise.all(
       (fotos.data ?? []).map(async (foto) => {
@@ -327,7 +334,7 @@ export const obterProtocolo = createServerFn({ method: "POST" })
       nfUrl,
       itens: itens.data ?? [],
       fotos: fotosComUrl,
-      eventos: eventos.data ?? [],
+      eventos: eventosVisiveis,
     };
   });
 

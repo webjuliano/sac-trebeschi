@@ -33,6 +33,7 @@
 ## Etapa 4 — Fechamento e indicadores
 - [ ] Anexo de NF de devolução e confirmação de coleta/canhoto
 - [ ] Painel gerencial
+- [ ] Esconder análise comercial (painel Sankhya e histórico interno) de usuários de loja
 
 ## Manutenção
 - [ ] Rotina agendada de expurgo de fotos antigas (prazo configurável)

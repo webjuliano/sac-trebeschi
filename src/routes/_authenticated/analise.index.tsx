@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { LineChart, Loader2, Search } from "lucide-react";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { PortalShell } from "@/components/portal-shell";
 import { Input } from "@/components/ui/input";
+import { obterMeuAcesso } from "@/lib/admin.functions";
 import { listarParaAnalise } from "@/lib/analise.functions";
 import { STATUS_CLASSE, STATUS_LABEL, dataHora, moeda } from "@/lib/protocolo-ui";
 
@@ -22,10 +23,22 @@ export const Route = createFileRoute("/_authenticated/analise/")({
 });
 
 function AnalisePage() {
+  const navegar = useNavigate();
   const listar = useServerFn(listarParaAnalise);
+  const obterAcesso = useServerFn(obterMeuAcesso);
   const [busca, setBusca] = useState("");
   const [linhas, setLinhas] = useState<Awaited<ReturnType<typeof listarParaAnalise>>>([]);
   const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    obterAcesso()
+      .then((acesso) => {
+        const equipe = acesso.roles.includes("admin") || acesso.roles.includes("analista");
+        if (!equipe) void navegar({ to: "/solicitacoes", replace: true });
+        else setCarregando(false);
+      })
+      .catch(() => setCarregando(false));
+  }, [obterAcesso, navegar]);
 
   useEffect(() => {
     let ativo = true;
