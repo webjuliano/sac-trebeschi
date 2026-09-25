@@ -147,6 +147,7 @@ function Usuario({ usuario, lojas, salvar, alterarStatus, excluir }: { usuario: 
   const vinculadas = lojas.filter((l) => usuario.loja_ids.includes(l.id));
   const perfil = usuario.roles.includes("admin") ? "Administrador" : usuario.roles.includes("analista") ? "Analista" : "Usuário de loja";
   const editavel = usuario.roles.includes("loja");
+  const acessoTotal = usuario.roles.includes("admin") || usuario.roles.includes("analista");
   const ativo = usuario.ativo !== false;
   return <div className="border bg-card p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -156,8 +157,9 @@ function Usuario({ usuario, lojas, salvar, alterarStatus, excluir }: { usuario: 
         <span className="rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">{perfil}</span>
       </div>
     </div>
-    {editavel && <div className="mt-4">
-      <div className="flex items-center justify-between"><p className="text-sm font-medium">Lojas com acesso ({vinculadas.length})</p>{!editando && <Button variant="outline" size="sm" onClick={() => { setIds(usuario.loja_ids); setEditando(true); }}><Pencil /> Editar lojas</Button>}</div>
+    <div className="mt-4">
+      <div className="flex items-center justify-between"><p className="text-sm font-medium">Lojas com acesso{editavel ? ` (${vinculadas.length})` : ""}</p>{editavel && !editando && <Button variant="outline" size="sm" onClick={() => { setIds(usuario.loja_ids); setEditando(true); }}><Pencil /> Editar lojas</Button>}</div>
+      {acessoTotal && <p className="mt-2 text-sm text-muted-foreground">Acesso total — este perfil visualiza as solicitações de todas as lojas.</p>}
       {!editando && (vinculadas.length === 0 ? <p className="mt-2 text-sm text-destructive">Nenhuma loja vinculada — este usuário não vê nenhuma solicitação.</p> : <div className="mt-2 flex flex-wrap gap-2">{vinculadas.map((l) => <span key={l.id} className="rounded-md border bg-muted px-2 py-1 text-xs">{l.rede ? `${l.rede} — ` : ""}{l.nome} ({l.codigo})</span>)}</div>)}
       {editando && <div className="mt-3"><SelecaoLojas lojas={lojas} selecionadas={ids} onChange={setIds} /><div className="mt-3 flex gap-2"><Button size="sm" disabled={ids.length === 0} onClick={async () => { await salvar(ids); setEditando(false); }}>Salvar lojas</Button><Button variant="ghost" size="sm" onClick={() => { setIds(usuario.loja_ids); setEditando(false); }}>Cancelar</Button></div>{ids.length === 0 && <p className="mt-2 text-xs text-destructive">Selecione pelo menos uma loja.</p>}</div>}
     </div>}
