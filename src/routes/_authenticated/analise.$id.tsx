@@ -148,6 +148,10 @@ function AnaliseDetalhePage() {
     }
   }
 
+  if (!verificandoAcesso && !podeAnalisar) {
+    return <PortalShell><p className="p-16 text-center text-sm text-muted-foreground">Redirecionando para a sua solicitação…</p></PortalShell>;
+  }
+
   if (!dados) {
     return <PortalShell><p className="p-16 text-center text-sm text-muted-foreground">Carregando solicitação…</p></PortalShell>;
   }
