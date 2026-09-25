@@ -319,3 +319,53 @@ export const editarUsuario = createServerFn({ method: "POST" })
     }
     return { ok: true as const, mensagem: "Usuário atualizado." };
   });
+
+/** Busca no Sankhya as lojas de um parceiro matriz, marcando as já cadastradas. */
+export const buscarLojasMatriz = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ codigo_matriz: z.string().trim().regex(/^\d{1,12}$/) }).parse(data))
+  .handler(async ({ data, context }) => {
+    await exigirAdmin(context);
+    const { listarLojasMatriz } = await import("./sankhya.server");
+    try {
+      const resultado = await listarLojasMatriz(data.codigo_matriz);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: existentes } = await supabaseAdmin.from("lojas").select("codigo_sankhya, codigo");
+      const usados = new Set((existentes ?? []).flatMap((l) => [l.codigo_sankhya, l.codigo]).filter(Boolean));
+      return {
+        ok: true as const,
+        matriz: resultado.matriz,
+        lojas: resultado.lojas.map((l) => ({ ...l, ja_cadastrada: usados.has(l.codparc) })),
+      };
+    } catch (error) {
+      return { ok: false as const, mensagem: error instanceof Error ? error.message : "Falha ao consultar o Sankhya." };
+    }
+  });
+
+export const importarLojasMatriz = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({
+      rede: z.string().trim().max(120).nullable(),
+      lojas: z.array(z.object({
+        codparc: z.string().trim().regex(/^\d{1,12}$/),
+        nome: z.string().trim().min(1).max(120),
+        dias_vendas: z.number().int().min(1).max(365),
+      })).min(1).max(500),
+    }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await exigirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let importadas = 0;
+    const falhas: string[] = [];
+    for (const loja of data.lojas) {
+      const { error } = await supabaseAdmin.from("lojas").insert({
+        nome: loja.nome, codigo: loja.codparc, codigo_sankhya: loja.codparc,
+        dias_vendas: loja.dias_vendas, rede: data.rede || null,
+      });
+      if (error) falhas.push(`${loja.nome}${error.code === "23505" ? " (já cadastrada)" : ""}`);
+      else importadas++;
+    }
+    return { importadas, falhas };
+  });
