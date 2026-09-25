@@ -41,3 +41,4 @@
 - Assinatura eletrônica do canhoto (a confirmar com o Assaí)
 - Credenciais do usuário de integração Sankhya
 - Domínio para envio de e-mails
+- [x] Bloqueio de fotos repetidas e já usadas (níveis 1 e 2)

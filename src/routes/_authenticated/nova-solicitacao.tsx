@@ -125,7 +125,7 @@ function NovaSolicitacao() {
         nota_fiscal: nota.numero, pedido: null, data_compra: nota.data, motivo: null, descricao: descricao || null,
         itens: selecionados.map(({ item, sel }) => ({
           codigo_produto: item.codigo, descricao: item.produto.slice(0, 200), quantidade: sel.quantidade, unidade: item.unidade || null,
-          valor_unitario: item.valor_unitario, lote: null, motivo: sel.motivo.trim(), fotos: sel.fotos.map(({ nome, base64 }) => ({ nome, base64 })),
+          valor_unitario: item.valor_unitario, lote: null, motivo: sel.motivo.trim(), fotos: sel.fotos.map(({ nome, base64, hash }) => ({ nome, base64, hash })),
         })),
         fotos: [],
       } });
