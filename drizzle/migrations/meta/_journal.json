@@ -57,6 +57,13 @@
       "when": 1790346093962,
       "tag": "0007_add_dias_vendas_lojas",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790361761787,
+      "tag": "0008_add_hash_protocolo_fotos",
+      "breakpoints": true
     }
   ]
 }

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { comprimirImagem } from "@/lib/comprimir-imagem";
-import { abrirProtocolo, listarItensNotaVenda, listarLojasPermitidas, listarNotasVendaLoja } from "@/lib/protocolos.functions";
+import { abrirProtocolo, listarItensNotaVenda, listarLojasPermitidas, listarNotasVendaLoja, verificarFotosUsadas } from "@/lib/protocolos.functions";
 import { data, moeda } from "@/lib/protocolo-ui";
 
 export const Route = createFileRoute("/_authenticated/nova-solicitacao")({
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/nova-solicitacao")({
 
 type NotaResumo = { nunota: string; numero: string; data: string | null; valor_total: number };
 type ItemNota = { produto: string; codigo: string | null; quantidade: number; valor_unitario: number; valor_total: number; unidade: string };
-type Foto = { nome: string; base64: string; bytes: number };
+type Foto = { nome: string; base64: string; bytes: number; hash: string };
 type Selecao = { quantidade: number; motivo: string; fotos: Foto[] };
 
 function NovaSolicitacao() {
@@ -35,6 +35,7 @@ function NovaSolicitacao() {
   const abrir = useServerFn(abrirProtocolo);
   const buscarNotas = useServerFn(listarNotasVendaLoja);
   const buscarItens = useServerFn(listarItensNotaVenda);
+  const verificarUsadas = useServerFn(verificarFotosUsadas);
   const [lojas, setLojas] = useState<Array<{ id: string; nome: string; codigo: string; rede: string | null }>>([]);
   const [lojaId, setLojaId] = useState("");
   const [contato, setContato] = useState({ nome: "", email: "", telefone: "" });
@@ -83,8 +84,25 @@ function NovaSolicitacao() {
     if (files.length > restantes) toast.warning("Até 6 fotos por item.");
     setProcessando(index);
     try {
-      const novas = await Promise.all(Array.from(files).slice(0, restantes).map((f) => comprimirImagem(f)));
-      atualizar(index, { fotos: [...atual, ...novas] });
+      const processadas = await Promise.all(Array.from(files).slice(0, restantes).map((f) => comprimirImagem(f)));
+      const jaNaSolicitacao = new Set(Object.values(selecao).flatMap((s) => s.fotos.map((f) => f.hash)));
+      const unicas: Foto[] = [];
+      let repetidas = 0;
+      for (const f of processadas) {
+        if (jaNaSolicitacao.has(f.hash)) { repetidas += 1; continue; }
+        jaNaSolicitacao.add(f.hash); unicas.push(f);
+      }
+      if (repetidas > 0) toast.error(repetidas === 1 ? "Esta foto já foi anexada nesta solicitação." : `${repetidas} fotos já foram anexadas nesta solicitação.`);
+      let novas = unicas;
+      if (unicas.length > 0) {
+        const usadas = await verificarUsadas({ data: { hashes: unicas.map((f) => f.hash) } });
+        if (usadas.length > 0) {
+          const bloqueadas = new Set(usadas.map((u) => u.hash));
+          novas = unicas.filter((f) => !bloqueadas.has(f.hash));
+          toast.error(`Foto já usada em outra solicitação (${Array.from(new Set(usadas.map((u) => u.numero))).join(", ")}). Envie uma foto nova.`);
+        }
+      }
+      if (novas.length > 0) atualizar(index, { fotos: [...atual, ...novas] });
     } catch { toast.error("Não foi possível processar uma das fotos."); }
     finally { setProcessando(null); }
   }
@@ -107,7 +125,7 @@ function NovaSolicitacao() {
         nota_fiscal: nota.numero, pedido: null, data_compra: nota.data, motivo: null, descricao: descricao || null,
         itens: selecionados.map(({ item, sel }) => ({
           codigo_produto: item.codigo, descricao: item.produto.slice(0, 200), quantidade: sel.quantidade, unidade: item.unidade || null,
-          valor_unitario: item.valor_unitario, lote: null, motivo: sel.motivo.trim(), fotos: sel.fotos.map(({ nome, base64 }) => ({ nome, base64 })),
+          valor_unitario: item.valor_unitario, lote: null, motivo: sel.motivo.trim(), fotos: sel.fotos.map(({ nome, base64, hash }) => ({ nome, base64, hash })),
         })),
         fotos: [],
       } });
