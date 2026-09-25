@@ -3,6 +3,11 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const fotoSchema = z.object({
+  nome: z.string().trim().min(1).max(200),
+  base64: z.string().min(10).max(3_500_000),
+});
+
 const itemSchema = z.object({
   codigo_produto: z.string().trim().max(60).optional().nullable(),
   descricao: z.string().trim().min(1).max(200),
@@ -10,13 +15,10 @@ const itemSchema = z.object({
   unidade: z.string().trim().max(10).optional().nullable(),
   valor_unitario: z.number().min(0).max(9999999),
   lote: z.string().trim().max(60).optional().nullable(),
-  motivo: z.string().trim().max(200).optional().nullable(),
+  motivo: z.string().trim().min(3, "Descreva a avaria de cada item.").max(200),
+  fotos: z.array(fotoSchema).min(1, "Anexe ao menos uma foto de evidência por item.").max(6),
 });
 
-const fotoSchema = z.object({
-  nome: z.string().trim().min(1).max(200),
-  base64: z.string().min(10).max(3_500_000),
-});
 
 const aberturaSchema = z.object({
   loja_id: z.string().uuid(),
@@ -26,10 +28,10 @@ const aberturaSchema = z.object({
   nota_fiscal: z.string().trim().max(60).optional().nullable(),
   pedido: z.string().trim().max(60).optional().nullable(),
   data_compra: z.string().trim().max(10).optional().nullable(),
-  motivo: z.string().trim().min(3).max(160),
+  motivo: z.string().trim().max(160).optional().nullable(),
   descricao: z.string().trim().max(2000).optional().nullable(),
   itens: z.array(itemSchema).min(1).max(40),
-  fotos: z.array(fotoSchema).max(12),
+  fotos: z.array(fotoSchema).max(12).default([]),
 });
 
 export type AberturaInput = z.infer<typeof aberturaSchema>;
@@ -93,7 +95,7 @@ export const abrirProtocolo = createServerFn({ method: "POST" })
         nota_fiscal: data.nota_fiscal ?? null,
         pedido: data.pedido ?? null,
         data_compra: data.data_compra || null,
-        motivo: data.motivo,
+        motivo: data.motivo || data.itens.map((i) => i.motivo).join("; ").slice(0, 160),
         descricao: data.descricao ?? null,
         valor_total: Number(valorTotal.toFixed(2)),
       })
@@ -101,7 +103,7 @@ export const abrirProtocolo = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const { error: itensError } = await supabaseAdmin.from("protocolo_itens").insert(
+    const { data: itensCriados, error: itensError } = await supabaseAdmin.from("protocolo_itens").insert(
       data.itens.map((item) => ({
         protocolo_id: protocolo.id,
         codigo_produto: item.codigo_produto ?? null,
@@ -110,10 +112,29 @@ export const abrirProtocolo = createServerFn({ method: "POST" })
         unidade: item.unidade ?? null,
         valor_unitario: item.valor_unitario,
         lote: item.lote ?? null,
-        motivo: item.motivo ?? null,
+        motivo: item.motivo,
       })),
-    );
+    ).select("id");
     if (itensError) throw new Error(itensError.message);
+
+    for (const [itemIndex, item] of data.itens.entries()) {
+      const itemId = itensCriados?.[itemIndex]?.id ?? null;
+      for (const [index, foto] of item.fotos.entries()) {
+        const bytes = decodeBase64(foto.base64);
+        const path = `${protocolo.id}/item-${itemIndex}-${Date.now()}-${index}.jpg`;
+        const { error: uploadError } = await supabaseAdmin.storage
+          .from("protocolo-fotos")
+          .upload(path, bytes, { contentType: "image/jpeg", upsert: false });
+        if (uploadError) continue;
+        await supabaseAdmin.from("protocolo_fotos").insert({
+          protocolo_id: protocolo.id,
+          item_id: itemId,
+          storage_path: path,
+          tipo: "evidencia",
+          tamanho_bytes: bytes.byteLength,
+        });
+      }
+    }
 
     for (const [index, foto] of data.fotos.entries()) {
       const bytes = decodeBase64(foto.base64);
@@ -388,4 +409,39 @@ export const indicadores = createServerFn({ method: "GET" })
       .limit(1000);
     if (error) throw new Error(error.message);
     return data ?? [];
+  });
+
+async function lojaComAcesso(context: { supabase: any; userId: string }, lojaId: string) {
+  const [{ data: equipe }, { data: acesso }] = await Promise.all([
+    context.supabase.rpc("is_equipe", { _user_id: context.userId }),
+    context.supabase.rpc("usuario_tem_acesso_loja", { _user_id: context.userId, _loja_id: lojaId }),
+  ]);
+  if (!equipe && !acesso) throw new Error("Você não possui acesso a esta loja.");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: loja } = await supabaseAdmin
+    .from("lojas").select("codigo_sankhya, dias_vendas").eq("id", lojaId).maybeSingle();
+  if (!loja?.codigo_sankhya) throw new Error("Esta loja ainda não tem o código do cliente no Sankhya cadastrado.");
+  return { codigo: loja.codigo_sankhya, dias: loja.dias_vendas ?? 30 };
+}
+
+/** Últimas notas de venda da loja conforme a quantidade de dias do cadastro. */
+export const listarNotasVendaLoja = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ loja_id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const loja = await lojaComAcesso(context, data.loja_id);
+    const { listarNotasRecentes } = await import("./sankhya.server");
+    return { dias: loja.dias, notas: await listarNotasRecentes(loja.codigo, loja.dias) };
+  });
+
+/** Itens de uma nota de venda da loja. */
+export const listarItensNotaVenda = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ loja_id: z.string().uuid(), nunota: z.string().regex(/^\d{1,12}$/) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const loja = await lojaComAcesso(context, data.loja_id);
+    const { listarItensNota } = await import("./sankhya.server");
+    return await listarItensNota(loja.codigo, data.nunota);
   });

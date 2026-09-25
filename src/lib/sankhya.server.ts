@@ -275,3 +275,49 @@ export async function buscarAnaliseComercial(params: {
     consultado_em: new Date().toISOString(),
   };
 }
+
+export type NotaResumo = { nunota: string; numero: string; data: string | null; valor_total: number };
+
+/** Últimas notas de venda do cliente dentro da janela de dias. */
+export async function listarNotasRecentes(codigoCliente: string, dias: number): Promise<NotaResumo[]> {
+  const cred = lerCredenciais();
+  if (!cred) throw new Error("Integração com o Sankhya não configurada.");
+  const codigo = escapar(codigoCliente.trim());
+  const janela = Math.max(1, Math.min(365, Math.round(dias)));
+  const sessao = await autenticar(cred);
+  const linhas = await consultar(
+    cred,
+    sessao,
+    `SELECT * FROM (
+       SELECT NUNOTA, NUMNOTA, TO_CHAR(DTNEG, 'YYYY-MM-DD'), VLRNOTA FROM TGFCAB
+       WHERE CODPARC = '${codigo}' AND TIPMOV = 'V' AND DTNEG >= TRUNC(SYSDATE) - ${janela}
+       ORDER BY DTNEG DESC, NUNOTA DESC
+     ) WHERE ROWNUM <= 300`,
+  );
+  return linhas.map((l) => ({ nunota: l[0] ?? "", numero: l[1] ?? "", data: l[2] || null, valor_total: num(l[3]) }));
+}
+
+/** Itens de uma nota de venda, validando que ela pertence ao cliente. */
+export async function listarItensNota(codigoCliente: string, nunota: string): Promise<Array<LinhaNota & { unidade: string }>> {
+  const cred = lerCredenciais();
+  if (!cred) throw new Error("Integração com o Sankhya não configurada.");
+  const codigo = escapar(codigoCliente.trim());
+  const sessao = await autenticar(cred);
+  const linhas = await consultar(
+    cred,
+    sessao,
+    `SELECT P.DESCRPROD, I.CODPROD, I.QTDNEG, I.VLRUNIT, I.VLRTOT, I.CODVOL
+     FROM TGFITE I JOIN TGFPRO P ON P.CODPROD = I.CODPROD
+     JOIN TGFCAB C ON C.NUNOTA = I.NUNOTA
+     WHERE I.NUNOTA = ${num(nunota)} AND C.CODPARC = '${codigo}' AND C.TIPMOV = 'V'
+     ORDER BY I.SEQUENCIA`,
+  );
+  return linhas.map((i) => ({
+    produto: i[0] ?? "",
+    codigo: i[1] ?? null,
+    quantidade: num(i[2]),
+    valor_unitario: num(i[3]),
+    valor_total: num(i[4]),
+    unidade: i[5] ?? "",
+  }));
+}
