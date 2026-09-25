@@ -175,6 +175,7 @@ export const abrirProtocolo = createServerFn({ method: "POST" })
           storage_path: path,
           tipo: "evidencia",
           tamanho_bytes: bytes.byteLength,
+          hash: foto.hash ?? null,
         });
       }
     }
@@ -191,6 +192,7 @@ export const abrirProtocolo = createServerFn({ method: "POST" })
         storage_path: path,
         tipo: "evidencia",
         tamanho_bytes: bytes.byteLength,
+          hash: foto.hash ?? null,
       });
     }
 
