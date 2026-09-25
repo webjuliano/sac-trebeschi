@@ -23,10 +23,22 @@ export const Route = createFileRoute("/_authenticated/analise/")({
 });
 
 function AnalisePage() {
+  const navegar = useNavigate();
   const listar = useServerFn(listarParaAnalise);
+  const obterAcesso = useServerFn(obterMeuAcesso);
   const [busca, setBusca] = useState("");
   const [linhas, setLinhas] = useState<Awaited<ReturnType<typeof listarParaAnalise>>>([]);
   const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    obterAcesso()
+      .then((acesso) => {
+        const equipe = acesso.roles.includes("admin") || acesso.roles.includes("analista");
+        if (!equipe) void navegar({ to: "/solicitacoes", replace: true });
+        else setCarregando(false);
+      })
+      .catch(() => setCarregando(false));
+  }, [obterAcesso, navegar]);
 
   useEffect(() => {
     let ativo = true;

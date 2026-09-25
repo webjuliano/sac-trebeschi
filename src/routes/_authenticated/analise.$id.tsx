@@ -30,7 +30,9 @@ const pct = (valor: number | null) =>
 
 function AnaliseDetalhePage() {
   const { id } = Route.useParams();
+  const navegar = useNavigate();
   const obter = useServerFn(obterProtocolo);
+  const obterAcesso = useServerFn(obterMeuAcesso);
   const obterComercial = useServerFn(obterAnaliseComercial);
   const decidir = useServerFn(registrarDecisao);
   const gravarSnapshot = useServerFn(registrarSnapshotAnalise);
@@ -38,6 +40,8 @@ function AnaliseDetalhePage() {
 
 
   const [dados, setDados] = useState<Awaited<ReturnType<typeof obterProtocolo>> | null>(null);
+  const [podeAnalisar, setPodeAnalisar] = useState(false);
+  const [verificandoAcesso, setVerificandoAcesso] = useState(true);
   const [comercial, setComercial] = useState<Awaited<ReturnType<typeof obterAnaliseComercial>> | null>(null);
   const [carregandoComercial, setCarregandoComercial] = useState(true);
   const [status, setStatus] = useState("em_analise");
@@ -51,8 +55,11 @@ function AnaliseDetalhePage() {
 
   async function carregar() {
     try {
-      const retorno = await obter({ data: { id } });
+      const [retorno, acesso] = await Promise.all([obter({ data: { id } }), obterAcesso()]);
       setDados(retorno);
+      const equipe = acesso.roles.includes("admin") || acesso.roles.includes("analista");
+      setPodeAnalisar(equipe);
+      setVerificandoAcesso(false);
       setStatus(retorno.protocolo.status === "aberto" ? "em_analise" : retorno.protocolo.status);
       setAprovacao(retorno.protocolo.aprovacao ?? "");
       setParecer(retorno.protocolo.parecer ?? "");
@@ -61,6 +68,7 @@ function AnaliseDetalhePage() {
       setQuantidades(Object.fromEntries(retorno.itens.map((item) => [item.id, Number(item.quantidade_aceita ?? item.quantidade)])));
     } catch {
       toast.error("Não foi possível carregar esta solicitação.");
+      setVerificandoAcesso(false);
     }
   }
 
