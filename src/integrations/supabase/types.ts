@@ -298,6 +298,7 @@ export type Database = {
       }
       protocolos: {
         Row: {
+          aprovacao: string | null
           canhoto_confirmado_em: string | null
           canhoto_confirmado_por: string | null
           canhoto_path: string | null
@@ -316,6 +317,7 @@ export type Database = {
           loja_nome: string
           motivo: string
           nf_devolucao: string | null
+          nf_devolucao_path: string | null
           nota_fiscal: string | null
           numero: string
           parecer: string | null
@@ -326,6 +328,7 @@ export type Database = {
           valor_total: number
         }
         Insert: {
+          aprovacao?: string | null
           canhoto_confirmado_em?: string | null
           canhoto_confirmado_por?: string | null
           canhoto_path?: string | null
@@ -344,6 +347,7 @@ export type Database = {
           loja_nome: string
           motivo: string
           nf_devolucao?: string | null
+          nf_devolucao_path?: string | null
           nota_fiscal?: string | null
           numero: string
           parecer?: string | null
@@ -354,6 +358,7 @@ export type Database = {
           valor_total?: number
         }
         Update: {
+          aprovacao?: string | null
           canhoto_confirmado_em?: string | null
           canhoto_confirmado_por?: string | null
           canhoto_path?: string | null
@@ -372,6 +377,7 @@ export type Database = {
           loja_nome?: string
           motivo?: string
           nf_devolucao?: string | null
+          nf_devolucao_path?: string | null
           nota_fiscal?: string | null
           numero?: string
           parecer?: string | null
@@ -492,6 +498,7 @@ export type Database = {
         | "aguardando_nf"
         | "coletado"
         | "encerrado"
+        | "nf_anexada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -630,6 +637,7 @@ export const Constants = {
         "aguardando_nf",
         "coletado",
         "encerrado",
+        "nf_anexada",
       ],
     },
   },

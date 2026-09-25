@@ -64,6 +64,13 @@
       "when": 1790361761787,
       "tag": "0008_add_hash_protocolo_fotos",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790363349651,
+      "tag": "0009_aprovacao_e_nf_anexada",
+      "breakpoints": true
     }
   ]
 }
