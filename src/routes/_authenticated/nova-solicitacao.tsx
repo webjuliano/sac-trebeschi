@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { comprimirImagem } from "@/lib/comprimir-imagem";
-import { abrirProtocolo, listarItensNotaVenda, listarLojasPermitidas, listarNotasVendaLoja } from "@/lib/protocolos.functions";
+import { abrirProtocolo, listarItensNotaVenda, listarLojasPermitidas, listarNotasVendaLoja, verificarFotosUsadas } from "@/lib/protocolos.functions";
 import { data, moeda } from "@/lib/protocolo-ui";
 
 export const Route = createFileRoute("/_authenticated/nova-solicitacao")({
