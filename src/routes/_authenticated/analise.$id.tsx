@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { obterMeuAcesso } from "@/lib/admin.functions";
 import { corrigirDadosVenda, obterAnaliseComercial, registrarSnapshotAnalise } from "@/lib/analise.functions";
 import { obterProtocolo, registrarDecisao } from "@/lib/protocolos.functions";
 import { APROVACAO_LABEL, STATUS_CLASSE, STATUS_LABEL, STATUS_OPCOES, data as formatarData, dataHora, moeda } from "@/lib/protocolo-ui";
@@ -85,7 +86,14 @@ function AnaliseDetalhePage() {
 
   useEffect(() => { void carregar(); }, [id]);
 
-  useEffect(() => { void carregarComercial(); }, [id]);
+  useEffect(() => { void carregarComercial(); }, [id, podeAnalisar]);
+
+  // Usuário de loja não vê a análise comercial: volta para a tela da solicitação dele.
+  useEffect(() => {
+    if (!verificandoAcesso && !podeAnalisar) {
+      void navegar({ to: "/protocolos/$id", params: { id }, replace: true });
+    }
+  }, [verificandoAcesso, podeAnalisar, id, navegar]);
 
   async function corrigirVenda(event: FormEvent) {
     event.preventDefault();
