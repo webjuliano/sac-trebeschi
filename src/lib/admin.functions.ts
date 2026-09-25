@@ -188,6 +188,7 @@ const STATUS_ABERTOS = [
   "aguardando_cliente",
   "aguardando_nf",
   "coletado",
+  "nf_anexada",
 ] as const;
 
 /** Ativa ou inativa o acesso de um usuário (mantém o histórico). */

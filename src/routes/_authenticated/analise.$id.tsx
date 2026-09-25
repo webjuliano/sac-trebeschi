@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { corrigirDadosVenda, obterAnaliseComercial, registrarSnapshotAnalise } from "@/lib/analise.functions";
 import { obterProtocolo, registrarDecisao } from "@/lib/protocolos.functions";
-import { STATUS_CLASSE, STATUS_LABEL, STATUS_OPCOES, data as formatarData, dataHora, moeda } from "@/lib/protocolo-ui";
+import { APROVACAO_LABEL, STATUS_CLASSE, STATUS_LABEL, STATUS_OPCOES, data as formatarData, dataHora, moeda } from "@/lib/protocolo-ui";
 
 export const Route = createFileRoute("/_authenticated/analise/$id")({
   head: () => ({ meta: [
@@ -40,7 +40,8 @@ function AnaliseDetalhePage() {
   const [dados, setDados] = useState<Awaited<ReturnType<typeof obterProtocolo>> | null>(null);
   const [comercial, setComercial] = useState<Awaited<ReturnType<typeof obterAnaliseComercial>> | null>(null);
   const [carregandoComercial, setCarregandoComercial] = useState(true);
-  const [status, setStatus] = useState("aceito_parcial");
+  const [status, setStatus] = useState("em_analise");
+  const [aprovacao, setAprovacao] = useState("");
   const [parecer, setParecer] = useState("");
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
   const [salvando, setSalvando] = useState(false);
@@ -52,7 +53,8 @@ function AnaliseDetalhePage() {
     try {
       const retorno = await obter({ data: { id } });
       setDados(retorno);
-      setStatus(retorno.protocolo.status === "aberto" ? "aceito_parcial" : retorno.protocolo.status);
+      setStatus(retorno.protocolo.status === "aberto" ? "em_analise" : retorno.protocolo.status);
+      setAprovacao(retorno.protocolo.aprovacao ?? "");
       setParecer(retorno.protocolo.parecer ?? "");
       setNotaEdit(retorno.protocolo.nota_fiscal ?? "");
       setDataCompraEdit(retorno.protocolo.data_compra ?? "");
@@ -108,7 +110,8 @@ function AnaliseDetalhePage() {
     try {
       await decidir({ data: {
         id,
-        status: status as "aceito_parcial",
+        status: status as "em_analise",
+        aprovacao: (aprovacao || null) as "aceito_parcial" | null,
         parecer: parecer || null,
         quantidades: Object.entries(quantidades).map(([item_id, quantidade_aceita]) => ({ item_id, quantidade_aceita })),
       } });
@@ -342,8 +345,16 @@ function AnaliseDetalhePage() {
                 <div>
                   <Label className="mb-2 block">Situação</Label>
                   <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
-                    {STATUS_OPCOES.filter((s) => s !== "aberto").map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                    {STATUS_OPCOES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
                   </select>
+                </div>
+                <div>
+                  <Label className="mb-2 block">Aprovação</Label>
+                  <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={aprovacao} onChange={(e) => { setAprovacao(e.target.value); if (e.target.value === "recusado") setStatus("recusado"); else if (e.target.value) setStatus("aguardando_nf"); }}>
+                    <option value="">Sem decisão</option>
+                    {Object.entries(APROVACAO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  <p className="mt-1 text-xs text-muted-foreground">Aceito parcial ou integral muda a situação para "Aguardando NF" ao salvar.</p>
                 </div>
                 <div>
                   <Label className="mb-2 block">Parecer para o cliente</Label>

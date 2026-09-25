@@ -314,8 +314,17 @@ export const obterProtocolo = createServerFn({ method: "POST" })
       }),
     );
 
+    let nfUrl: string | null = null;
+    if (protocolo.nf_devolucao_path) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: signed } = await supabaseAdmin.storage
+        .from("protocolo-nf").createSignedUrl(protocolo.nf_devolucao_path, 60 * 30);
+      nfUrl = signed?.signedUrl ?? null;
+    }
+
     return {
       protocolo,
+      nfUrl,
       itens: itens.data ?? [],
       fotos: fotosComUrl,
       eventos: eventos.data ?? [],
@@ -324,16 +333,8 @@ export const obterProtocolo = createServerFn({ method: "POST" })
 
 const decisaoSchema = z.object({
   id: z.string().uuid(),
-  status: z.enum([
-    "em_analise",
-    "aguardando_cliente",
-    "aceito_total",
-    "aceito_parcial",
-    "recusado",
-    "aguardando_nf",
-    "coletado",
-    "encerrado",
-  ]),
+  status: z.enum(["aberto", "em_analise", "recusado", "aguardando_nf", "nf_anexada", "encerrado"]),
+  aprovacao: z.enum(["aceito_parcial", "aceito_total", "recusado"]).optional().nullable(),
   parecer: z.string().trim().max(2000).optional().nullable(),
   quantidades: z
     .array(
@@ -354,6 +355,8 @@ const ROTULOS: Record<string, string> = {
   recusado: "Devolução recusada",
   aguardando_nf: "Aguardando nota fiscal de devolução",
   coletado: "Coleta confirmada",
+  nf_anexada: "Nota fiscal de devolução anexada",
+  aberto: "Aberto",
   encerrado: "Protocolo encerrado",
 };
 
@@ -361,7 +364,10 @@ export const registrarDecisao = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => decisaoSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const decisivo = ["aceito_total", "aceito_parcial", "recusado"].includes(data.status);
+    const decisivo = !!data.aprovacao;
+    if (data.aprovacao === "aceito_total" || data.aprovacao === "aceito_parcial") data.status = "aguardando_nf";
+    else if (data.aprovacao === "recusado") data.status = "recusado";
+    const rotulo = data.aprovacao ? ROTULOS[data.aprovacao] : ROTULOS[data.status];
 
     if (data.quantidades?.length) {
       const resultados = await Promise.all(
@@ -381,6 +387,7 @@ export const registrarDecisao = createServerFn({ method: "POST" })
       .from("protocolos")
       .update({
         status: data.status,
+        aprovacao: data.aprovacao ?? null,
         parecer: data.parecer ?? null,
         responsavel_id: context.userId,
         ...(decisivo ? { decidido_por: context.userId, decidido_em: new Date().toISOString() } : {}),
@@ -401,7 +408,7 @@ export const registrarDecisao = createServerFn({ method: "POST" })
     await context.supabase.from("protocolo_eventos").insert({
       protocolo_id: data.id,
       tipo: decisivo ? "decisao" : "andamento",
-      descricao: `${ROTULOS[data.status]}${data.parecer ? ` — ${data.parecer}` : ""}`,
+      descricao: `${rotulo}${data.aprovacao === "aceito_total" || data.aprovacao === "aceito_parcial" ? " — aguardando NF de devolução" : ""}${data.parecer ? ` — ${data.parecer}` : ""}`,
       autor_id: context.userId,
       autor_nome: perfil?.nome || perfil?.email || "Equipe Trebeschi",
     });
@@ -409,11 +416,12 @@ export const registrarDecisao = createServerFn({ method: "POST" })
     const { notificarCliente } = await import("./notificacoes.server");
     await notificarCliente({
       para: protocolo.cliente_email,
-      assunto: `Devolução ${protocolo.numero}: ${ROTULOS[data.status]}`,
-      titulo: ROTULOS[data.status] ?? "Atualização da sua devolução",
+      assunto: `Devolução ${protocolo.numero}: ${rotulo}`,
+      titulo: rotulo ?? "Atualização da sua devolução",
       linhas: [
         `Olá ${protocolo.cliente_nome}, houve uma atualização no protocolo ${protocolo.numero}.`,
-        ROTULOS[data.status] ?? "",
+        rotulo ?? "",
+        ...(data.status === "aguardando_nf" ? ["Acesse o portal e anexe o PDF (DANFE) da nota fiscal de devolução."] : []),
         ...(data.parecer ? [data.parecer] : []),
       ],
       protocoloId: protocolo.id,
@@ -426,21 +434,43 @@ export const registrarNotaDevolucao = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
-      .object({ id: z.string().uuid(), nf_devolucao: z.string().trim().min(1).max(60) })
+      .object({
+        id: z.string().uuid(),
+        nf_devolucao: z.string().trim().min(1).max(60),
+        pdf_base64: z.string().min(10).max(14_000_000),
+        nome_arquivo: z.string().max(200),
+      })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    // RLS garante que o usuário só enxerga protocolos das lojas dele
+    const { data: protocolo } = await context.supabase
+      .from("protocolos").select("id, numero, status").eq("id", data.id).maybeSingle();
+    if (!protocolo) throw new Error("Protocolo não encontrado ou sem permissão.");
+    if (protocolo.status !== "aguardando_nf") throw new Error("Este protocolo não está aguardando nota fiscal.");
+    const bytes = Buffer.from(data.pdf_base64, "base64");
+    if (bytes.subarray(0, 4).toString() !== "%PDF") throw new Error("Envie o arquivo PDF (DANFE) da nota fiscal.");
+    if (bytes.length > 10 * 1024 * 1024) throw new Error("O PDF deve ter no máximo 10 MB.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const caminho = `${data.id}/nf-${Date.now()}.pdf`;
+    const { error: erroUpload } = await supabaseAdmin.storage
+      .from("protocolo-nf").upload(caminho, bytes, { contentType: "application/pdf" });
+    if (erroUpload) throw new Error("Não foi possível gravar o PDF.");
+    const { error } = await supabaseAdmin
       .from("protocolos")
-      .update({ nf_devolucao: data.nf_devolucao, status: "coletado" })
+      .update({ nf_devolucao: data.nf_devolucao, nf_devolucao_path: caminho, status: "nf_anexada" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
 
-    await context.supabase.from("protocolo_eventos").insert({
+    const { data: perfil } = await context.supabase
+      .from("profiles").select("nome, email").eq("id", context.userId).maybeSingle();
+    await supabaseAdmin.from("protocolo_eventos").insert({
       protocolo_id: data.id,
       tipo: "nota_fiscal",
-      descricao: `Nota fiscal de devolução registrada: ${data.nf_devolucao}.`,
+      descricao: `Nota fiscal de devolução anexada: ${data.nf_devolucao} (${data.nome_arquivo}).`,
       autor_id: context.userId,
+      autor_nome: perfil?.nome || perfil?.email || null,
     });
     return { ok: true };
   });
