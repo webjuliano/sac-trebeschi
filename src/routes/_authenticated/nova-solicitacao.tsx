@@ -161,7 +161,7 @@ function NovaSolicitacao() {
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <form onSubmit={enviar} className="space-y-10">
           <FormSection numero="01" titulo="Loja">
-            <select value={lojaId} onChange={(e) => setLojaId(e.target.value)} required className="h-10 w-full rounded-md border bg-card px-3 text-sm"><option value="">Selecione a loja</option>{lojas.map((loja) => <option key={loja.id} value={loja.id}>{loja.rede ? `${loja.rede} — ` : ""}{loja.nome} ({loja.codigo})</option>)}</select>
+            <select value={lojaId} onChange={(e) => setLojaId(e.target.value)} required className="h-10 w-full rounded-md border bg-card px-3 text-sm"><option value="">Selecione a loja</option>{lojas.map((loja) => <option key={loja.id} value={loja.id}>{loja.nome} ({loja.codigo})</option>)}</select>
           </FormSection>
           {lojaId && <FormSection numero="02" titulo="Contato do solicitante">
             <div className="grid gap-5 sm:grid-cols-3">
