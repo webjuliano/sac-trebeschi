@@ -20,6 +20,7 @@
 - [x] Tela administrativa para cadastrar lojas e usuários
 - [x] Vínculo de um usuário a uma ou várias lojas
 - [x] Restrição de protocolos conforme as lojas vinculadas
+- [x] Pesquisa de lojas na seleção "Lojas permitidas" e filtro na lista de lojas cadastradas
 
 ## Etapa 3 — Sankhya
 - [x] Serviço de integração no servidor (autenticação /authenticate com X-Token + client_id/secret)
