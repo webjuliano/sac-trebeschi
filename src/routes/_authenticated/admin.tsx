@@ -186,6 +186,7 @@ function Usuario({ usuario, lojas, editar, salvar, alterarStatus, excluir }: { u
     </div>
     <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
       <Button variant="outline" size="sm" onClick={() => { setNomeEd(usuario.nome ?? ""); setRoleEd(roleAtual); setIdsEd(usuario.loja_ids); setEditUser(true); }}><Pencil /> Editar usuário</Button>
+      <Button variant="outline" size="sm" onClick={async () => { const senha = window.prompt(`Nova senha para ${usuario.email} (mínimo 6 caracteres):`); if (senha === null) return; if (senha.length < 6) { toast.error("A senha precisa ter pelo menos 6 caracteres."); return; } try { const r = await redefinirSenha({ data: { user_id: usuario.id, senha } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível alterar a senha."); } }}><KeyRound /> Redefinir senha</Button>
       <Button variant="outline" size="sm" onClick={() => alterarStatus(!ativo)}>{ativo ? <><Ban /> Inativar acesso</> : <><RotateCcw /> Reativar acesso</>}</Button>
       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { if (window.confirm(`Excluir definitivamente ${usuario.email}? Só é possível se não houver nada vinculado.`)) void excluir(); }}><Trash2 /> Excluir</Button>
     </div>
