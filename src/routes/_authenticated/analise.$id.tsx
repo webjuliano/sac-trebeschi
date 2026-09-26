@@ -86,7 +86,7 @@ function AnaliseDetalhePage() {
 
   useEffect(() => { void carregar(); }, [id]);
 
-  useEffect(() => { void carregarComercial(); }, [id, podeAnalisar]);
+  useEffect(() => { if (podeAnalisar) void carregarComercial(); }, [id, podeAnalisar]);
 
   // Usuário de loja não vê a análise comercial: volta para a tela da solicitação dele.
   useEffect(() => {
