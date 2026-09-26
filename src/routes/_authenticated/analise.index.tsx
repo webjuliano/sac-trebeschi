@@ -29,18 +29,23 @@ function AnalisePage() {
   const [busca, setBusca] = useState("");
   const [linhas, setLinhas] = useState<Awaited<ReturnType<typeof listarParaAnalise>>>([]);
   const [carregando, setCarregando] = useState(true);
+  const [equipe, setEquipe] = useState(false);
 
   useEffect(() => {
     obterAcesso()
       .then((acesso) => {
-        const equipe = acesso.roles.includes("admin") || acesso.roles.includes("analista");
-        if (!equipe) void navegar({ to: "/solicitacoes", replace: true });
-        else setCarregando(false);
+        const daEquipe = acesso.roles.includes("admin") || acesso.roles.includes("analista");
+        if (!daEquipe) void navegar({ to: "/solicitacoes", replace: true });
+        else {
+          setEquipe(true);
+          setCarregando(false);
+        }
       })
       .catch(() => setCarregando(false));
   }, [obterAcesso, navegar]);
 
   useEffect(() => {
+    if (!equipe) return;
     let ativo = true;
     setCarregando(true);
     const timer = setTimeout(() => {
@@ -50,7 +55,7 @@ function AnalisePage() {
         .finally(() => { if (ativo) setCarregando(false); });
     }, 250);
     return () => { ativo = false; clearTimeout(timer); };
-  }, [busca, listar]);
+  }, [busca, listar, equipe]);
 
   return (
     <PortalShell>
