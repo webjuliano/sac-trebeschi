@@ -71,6 +71,13 @@
       "when": 1790363349651,
       "tag": "0009_aprovacao_e_nf_anexada",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790693077666,
+      "tag": "0010_add_canhoto_assinado_status",
+      "breakpoints": true
     }
   ]
 }

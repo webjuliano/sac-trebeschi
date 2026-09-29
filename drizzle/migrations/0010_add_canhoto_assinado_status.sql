@@ -1,0 +1,1 @@
+ALTER TYPE public.protocolo_status ADD VALUE IF NOT EXISTS 'canhoto_assinado' AFTER 'nf_anexada';
