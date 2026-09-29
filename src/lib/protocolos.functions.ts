@@ -328,10 +328,18 @@ export const obterProtocolo = createServerFn({ method: "POST" })
         .from("protocolo-nf").createSignedUrl(protocolo.nf_devolucao_path, 60 * 30);
       nfUrl = signed?.signedUrl ?? null;
     }
+    let canhotoUrl: string | null = null;
+    if (protocolo.canhoto_path) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: signed } = await supabaseAdmin.storage
+        .from("protocolo-canhoto").createSignedUrl(protocolo.canhoto_path, 60 * 30);
+      canhotoUrl = signed?.signedUrl ?? null;
+    }
 
     return {
       protocolo,
       nfUrl,
+      canhotoUrl,
       itens: itens.data ?? [],
       fotos: fotosComUrl,
       eventos: eventosVisiveis,
@@ -340,7 +348,7 @@ export const obterProtocolo = createServerFn({ method: "POST" })
 
 const decisaoSchema = z.object({
   id: z.string().uuid(),
-  status: z.enum(["aberto", "em_analise", "recusado", "aguardando_nf", "nf_anexada", "encerrado"]),
+  status: z.enum(["aberto", "em_analise", "recusado", "aguardando_nf", "nf_anexada", "canhoto_assinado", "encerrado"]),
   aprovacao: z.enum(["aceito_parcial", "aceito_total", "recusado"]).optional().nullable(),
   parecer: z.string().trim().max(2000).optional().nullable(),
   quantidades: z
@@ -363,6 +371,7 @@ const ROTULOS: Record<string, string> = {
   aguardando_nf: "Aguardando nota fiscal de devolução",
   coletado: "Coleta confirmada",
   nf_anexada: "Nota fiscal de devolução anexada",
+  canhoto_assinado: "Canhoto assinado",
   aberto: "Aberto",
   encerrado: "Protocolo encerrado",
 };
@@ -476,6 +485,56 @@ export const registrarNotaDevolucao = createServerFn({ method: "POST" })
       protocolo_id: data.id,
       tipo: "nota_fiscal",
       descricao: `Nota fiscal de devolução anexada: ${data.nf_devolucao} (${data.nome_arquivo}).`,
+      autor_id: context.userId,
+      autor_nome: perfil?.nome || perfil?.email || null,
+    });
+    return { ok: true };
+  });
+
+export const registrarCanhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        arquivo_base64: z.string().min(10).max(14_000_000),
+        nome_arquivo: z.string().max(200),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: equipe } = await context.supabase.rpc("is_equipe", { _user_id: context.userId });
+    if (!equipe) throw new Error("Somente a equipe Trebeschi pode anexar o canhoto.");
+    const { data: protocolo } = await context.supabase
+      .from("protocolos").select("id, status").eq("id", data.id).maybeSingle();
+    if (!protocolo) throw new Error("Protocolo não encontrado.");
+    if (protocolo.status !== "nf_anexada") throw new Error("O canhoto só pode ser anexado após a NF anexada.");
+    const bytes = Buffer.from(data.arquivo_base64, "base64");
+    if (bytes.length > 10 * 1024 * 1024) throw new Error("O arquivo deve ter no máximo 10 MB.");
+    let tipo = "";
+    let ext = "";
+    if (bytes.subarray(0, 4).toString() === "%PDF") { tipo = "application/pdf"; ext = "pdf"; }
+    else if (bytes[0] === 0xff && bytes[1] === 0xd8) { tipo = "image/jpeg"; ext = "jpg"; }
+    else if (bytes[0] === 0x89 && bytes[1] === 0x50) { tipo = "image/png"; ext = "png"; }
+    else throw new Error("Envie o canhoto em PDF, JPG ou PNG.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const caminho = `${data.id}/canhoto-${Date.now()}.${ext}`;
+    const { error: erroUpload } = await supabaseAdmin.storage
+      .from("protocolo-canhoto").upload(caminho, bytes, { contentType: tipo });
+    if (erroUpload) throw new Error("Não foi possível gravar o canhoto.");
+    const agora = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from("protocolos")
+      .update({ canhoto_path: caminho, canhoto_confirmado_por: context.userId, canhoto_confirmado_em: agora, status: "canhoto_assinado" })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    const { data: perfil } = await context.supabase
+      .from("profiles").select("nome, email").eq("id", context.userId).maybeSingle();
+    await supabaseAdmin.from("protocolo_eventos").insert({
+      protocolo_id: data.id,
+      tipo: "canhoto",
+      descricao: `Canhoto assinado anexado (${data.nome_arquivo}).`,
       autor_id: context.userId,
       autor_nome: perfil?.nome || perfil?.email || null,
     });

@@ -499,6 +499,7 @@ export type Database = {
         | "coletado"
         | "encerrado"
         | "nf_anexada"
+        | "canhoto_assinado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -638,6 +639,7 @@ export const Constants = {
         "coletado",
         "encerrado",
         "nf_anexada",
+        "canhoto_assinado",
       ],
     },
   },

@@ -8,6 +8,7 @@ export const STATUS_LABEL: Record<string, string> = {
   aguardando_nf: "Aguardando NF",
   coletado: "Coletado",
   nf_anexada: "NF anexada",
+  canhoto_assinado: "Canhoto assinado",
   encerrado: "Encerrado",
 };
 
@@ -21,10 +22,11 @@ export const STATUS_CLASSE: Record<string, string> = {
   aguardando_nf: "bg-muted text-muted-foreground",
   coletado: "bg-chart-2/20 text-chart-3",
   nf_anexada: "bg-chart-2/20 text-chart-3",
+  canhoto_assinado: "bg-chart-2/20 text-chart-3",
   encerrado: "bg-muted text-muted-foreground",
 };
 
-export const STATUS_OPCOES = ["aberto", "em_analise", "recusado", "aguardando_nf", "nf_anexada", "encerrado"];
+export const STATUS_OPCOES = ["aberto", "em_analise", "recusado", "aguardando_nf", "nf_anexada", "canhoto_assinado", "encerrado"];
 
 export const APROVACAO_LABEL: Record<string, string> = {
   aceito_parcial: "Aceito parcial",
