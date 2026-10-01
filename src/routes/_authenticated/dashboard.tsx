@@ -22,8 +22,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 const ABERTOS = ["aberto", "em_analise"];
-const PENDENTES = ["aguardando_cliente", "aguardando_nf", "nf_anexada", "canhoto_assinado", "coletado"];
-const FECHADOS = ["aceito_total", "aceito_parcial", "recusado", "encerrado"];
+const PENDENTES = ["aguardando_cliente", "aguardando_nf", "nf_anexada", "coletado"];
+const FECHADOS = ["aceito_total", "aceito_parcial", "recusado", "encerrado", "canhoto_assinado"];
 
 type Filtro = "todos" | "abertos" | "pendentes" | "fechados";
 
