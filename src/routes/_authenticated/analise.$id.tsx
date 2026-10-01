@@ -221,6 +221,8 @@ function AnaliseDetalhePage() {
                         <td className="p-3">{moeda(item.valor_unitario)}</td>
                         <td className="p-3">
                           <Input aria-label={`Quantidade aceita de ${item.descricao}`} type="number" min="0" max={item.quantidade} step="0.01" className="w-28"
+                            disabled={!["aberto", "em_analise"].includes(dados?.protocolo.status ?? "")}
+                            title={!["aberto", "em_analise"].includes(dados?.protocolo.status ?? "") ? "Só pode ser alterada com a situação Aberto ou Em análise" : undefined}
                             value={quantidades[item.id] ?? 0}
                             onChange={(e) => setQuantidades({ ...quantidades, [item.id]: Number(e.target.value) })} />
                         </td>
