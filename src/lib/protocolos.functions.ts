@@ -385,7 +385,9 @@ export const registrarDecisao = createServerFn({ method: "POST" })
     else if (data.aprovacao === "recusado") data.status = "recusado";
     const rotulo = data.aprovacao ? ROTULOS[data.aprovacao] : ROTULOS[data.status];
 
-    if (data.quantidades?.length) {
+    const { data: atual } = await context.supabase.from("protocolos").select("status").eq("id", data.id).maybeSingle();
+    const podeEditarQuantidade = atual && ["aberto", "em_analise"].includes(atual.status);
+    if (data.quantidades?.length && podeEditarQuantidade) {
       const resultados = await Promise.all(
         data.quantidades.map((item) =>
           context.supabase
