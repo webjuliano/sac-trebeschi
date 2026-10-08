@@ -43,3 +43,10 @@
 - Credenciais do usuário de integração Sankhya
 - Domínio para envio de e-mails
 - [x] Bloqueio de fotos repetidas e já usadas (níveis 1 e 2)
+
+## Migração para VPS Oracle (ARM64)
+- [x] Código no GitHub (chaves públicas apenas — sem segredos expostos)
+- [ ] Dump dos dados: via Cloud → Configurações avançadas → Exportar dados (não há dump direto pela plataforma)
+- [ ] Schema recriável pelas migrations em drizzle/migrations (0000–0010)
+- [ ] Decisão pendente: manter Supabase self-hosted (Docker) ou login próprio na VPS
+- [ ] Exportar fotos dos buckets (protocolo-fotos, protocolo-nf, protocolo-canhoto)
