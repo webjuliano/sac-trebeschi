@@ -18,7 +18,7 @@ const usuarioSchema = z.object({
   nome: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(160),
   senha: z.string().min(8).max(72),
-  role: z.enum(["admin", "analista", "loja"]),
+  role: z.enum(["master", "admin", "analista", "loja"]),
   loja_ids: z.array(z.string().uuid()).max(100),
 });
 
@@ -38,6 +38,24 @@ async function exigirAdmin(context: {
   if (error || !data) throw new Error("Acesso permitido somente para administradores.");
 }
 
+async function exigirMaster(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).eq("role", "master").maybeSingle();
+  if (error || !data) throw new Error("Acesso permitido somente para Administrador Master.");
+}
+
+async function exigirMasterParaAlvoMaster(actorId: string, targetId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("user_roles")
+    .select("id")
+    .eq("user_id", targetId)
+    .eq("role", "master")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (data) await exigirMaster(actorId);
+}
+
 export const obterMeuAcesso = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -47,7 +65,7 @@ export const obterMeuAcesso = createServerFn({ method: "GET" })
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     const roles = (data ?? []).map((item) => item.role);
-    return { isAdmin: roles.includes("admin"), roles };
+    return { isAdmin: roles.includes("admin") || roles.includes("master"), isMaster: roles.includes("master"), roles };
   });
 
 export const listarAdministracao = createServerFn({ method: "GET" })
@@ -64,6 +82,7 @@ export const listarAdministracao = createServerFn({ method: "GET" })
     const erro = lojas.error ?? perfis.error ?? papeis.error ?? vinculos.error;
     if (erro) throw new Error(erro.message);
     return {
+      isMaster: (papeis.data ?? []).some((item) => item.user_id === context.userId && item.role === "master"),
       lojas: lojas.data ?? [],
       usuarios: (perfis.data ?? []).map((perfil) => ({
         ...perfil,
@@ -121,6 +140,7 @@ export const criarUsuario = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => usuarioSchema.parse(data))
   .handler(async ({ data, context }) => {
     await exigirAdmin(context);
+    if (data.role === "master") await exigirMaster(context.userId);
     if (data.role === "loja" && data.loja_ids.length === 0) {
       throw new Error("Selecione pelo menos uma loja para este usuário.");
     }
@@ -146,9 +166,10 @@ export const criarUsuario = createServerFn({ method: "POST" })
     const { error: perfilError } = await supabaseAdmin
       .from("profiles")
       .upsert({ id: userId, nome: data.nome, email: data.email.toLowerCase() });
+    const roles = data.role === "master" ? ["master", "admin"] as const : [data.role];
     const { error: papelError } = await supabaseAdmin
       .from("user_roles")
-      .upsert({ user_id: userId, role: data.role }, { onConflict: "user_id,role" });
+      .upsert(roles.map((role) => ({ user_id: userId, role })), { onConflict: "user_id,role" });
     const { error: vinculoError } = data.role === "loja"
       ? await supabaseAdmin.from("user_lojas").insert(
           [...new Set(data.loja_ids)].map((loja_id) => ({ user_id: userId, loja_id })),
@@ -200,6 +221,7 @@ export const definirStatusUsuario = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await exigirAdmin(context);
+    await exigirMasterParaAlvoMaster(context.userId, data.user_id);
     if (data.user_id === context.userId && !data.ativo) {
       return { ok: false as const, mensagem: "Você não pode inativar o seu próprio acesso." };
     }
@@ -229,6 +251,7 @@ export const redefinirSenhaUsuario = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await exigirAdmin(context);
+    await exigirMasterParaAlvoMaster(context.userId, data.user_id);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
       password: data.senha,
@@ -244,6 +267,7 @@ export const excluirUsuario = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ user_id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     await exigirAdmin(context);
+    await exigirMasterParaAlvoMaster(context.userId, data.user_id);
     if (data.user_id === context.userId) {
       return { ok: false as const, mensagem: "Você não pode excluir o seu próprio acesso." };
     }
@@ -254,7 +278,7 @@ export const excluirUsuario = createServerFn({ method: "POST" })
       .select("role")
       .eq("user_id", data.user_id);
     const roles = (papeis ?? []).map((item) => item.role);
-    const equipe = roles.includes("admin") || roles.includes("analista");
+    const equipe = roles.includes("master") || roles.includes("admin") || roles.includes("analista");
 
     // Atendimentos: solicitações em que o usuário atuou.
     const atendimentos = await Promise.all(
@@ -316,24 +340,27 @@ export const editarUsuario = createServerFn({ method: "POST" })
     z.object({
       user_id: z.string().uuid(),
       nome: z.string().trim().min(2).max(120),
-      role: z.enum(["admin", "analista", "loja"]),
+      role: z.enum(["master", "admin", "analista", "loja"]),
       loja_ids: z.array(z.string().uuid()).max(100),
     }).parse(data),
   )
   .handler(async ({ data, context }) => {
     await exigirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: targetMaster } = await supabaseAdmin.from("user_roles").select("id").eq("user_id", data.user_id).eq("role", "master").maybeSingle();
+    if (data.role === "master" || targetMaster) await exigirMaster(context.userId);
     if (data.role === "loja" && data.loja_ids.length === 0) {
       return { ok: false as const, mensagem: "Selecione pelo menos uma loja para este usuário." };
     }
-    if (data.user_id === context.userId && data.role !== "admin") {
+    if (data.user_id === context.userId && data.role !== "admin" && data.role !== "master") {
       return { ok: false as const, mensagem: "Você não pode remover o seu próprio perfil de administrador." };
     }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: perfilError } = await supabaseAdmin.from("profiles").update({ nome: data.nome }).eq("id", data.user_id);
     if (perfilError) return { ok: false as const, mensagem: perfilError.message };
-    const { error: delRole } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id).neq("role", data.role);
+    const desiredRoles = data.role === "master" ? ["master", "admin"] as const : [data.role];
+    const { error: delRole } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id).not("role", "in", `(${desiredRoles.join(",")})`);
     if (delRole) return { ok: false as const, mensagem: delRole.message };
-    const { error: roleError } = await supabaseAdmin.from("user_roles").upsert({ user_id: data.user_id, role: data.role }, { onConflict: "user_id,role" });
+    const { error: roleError } = await supabaseAdmin.from("user_roles").upsert(desiredRoles.map((role) => ({ user_id: data.user_id, role })), { onConflict: "user_id,role" });
     if (roleError) return { ok: false as const, mensagem: roleError.message };
     const { error: delLojas } = await supabaseAdmin.from("user_lojas").delete().eq("user_id", data.user_id);
     if (delLojas) return { ok: false as const, mensagem: delLojas.message };
@@ -392,4 +419,56 @@ export const importarLojasMatriz = createServerFn({ method: "POST" })
       else importadas++;
     }
     return { importadas, falhas };
+  });
+
+const credenciaisApiSchema = z.object({
+  baseUrl: z.string().trim().url().max(300),
+  token: z.string().trim().min(10).max(4000),
+  clientId: z.string().trim().min(3).max(500),
+  clientSecret: z.string().trim().min(8).max(4000),
+});
+
+async function testarCredenciaisSankhya(data: z.infer<typeof credenciaisApiSchema>) {
+  const baseUrl = data.baseUrl.replace(/\/+$/, "").replace(/\/(authenticate|login)$/i, "");
+  const auth = await fetch(`${baseUrl}/authenticate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json", "X-Token": data.token },
+    body: new URLSearchParams({ client_id: data.clientId, client_secret: data.clientSecret, grant_type: "client_credentials" }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  const authBody = await auth.json().catch(() => ({})) as { access_token?: string; error?: string; error_description?: string };
+  if (!auth.ok || !authBody.access_token) throw new Error(authBody.error_description || authBody.error || `Autenticação recusada (HTTP ${auth.status}).`);
+  const target = new URL(`${baseUrl}/gateway/v1/mge/service.sbr`);
+  target.searchParams.set("serviceName", "DbExplorerSP.executeQuery");
+  target.searchParams.set("outputType", "json");
+  const query = await fetch(target, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${authBody.access_token}` },
+    body: JSON.stringify({ serviceName: "DbExplorerSP.executeQuery", requestBody: { sql: "SELECT 1 AS RESULTADO" } }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  const queryBody = await query.json().catch(() => ({})) as { status?: string; statusMessage?: string; responseBody?: { rows?: unknown[][] } };
+  if (!query.ok || (queryBody.status && queryBody.status !== "1") || String(queryBody.responseBody?.rows?.[0]?.[0]) !== "1") {
+    throw new Error(queryBody.statusMessage ? decodeURIComponent(queryBody.statusMessage.replace(/\+/g, " ")) : `Consulta de validação recusada (HTTP ${query.status}).`);
+  }
+  return { ...data, baseUrl };
+}
+
+export const obterDadosApi = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await exigirMaster(context.userId);
+    const { sankhyaCredentialStatus } = await import("./api-credentials.server");
+    return sankhyaCredentialStatus();
+  });
+
+export const salvarDadosApi = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => credenciaisApiSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    await exigirMaster(context.userId);
+    const valid = await testarCredenciaisSankhya(data);
+    const { saveSankhyaCredentials } = await import("./api-credentials.server");
+    await saveSankhyaCredentials({ url: valid.baseUrl, token: valid.token, clientId: valid.clientId, clientSecret: valid.clientSecret }, context.userId);
+    return { ok: true as const, mensagem: "Credenciais validadas e salvas com segurança." };
   });
