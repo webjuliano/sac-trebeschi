@@ -444,7 +444,7 @@ async function testarCredenciaisSankhya(data: z.infer<typeof credenciaisApiSchem
   const query = await fetch(target, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${authBody.access_token}` },
-    body: JSON.stringify({ serviceName: "DbExplorerSP.executeQuery", requestBody: { sql: "SELECT 1 AS RESULTADO" } }),
+    body: JSON.stringify({ serviceName: "DbExplorerSP.executeQuery", requestBody: { sql: "SELECT 1 AS RESULTADO FROM DUAL" } }),
     signal: AbortSignal.timeout(25_000),
   });
   const queryBody = await query.json().catch(() => ({})) as { status?: string; statusMessage?: string; responseBody?: { rows?: unknown[][] } };
