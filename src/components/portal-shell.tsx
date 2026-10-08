@@ -53,7 +53,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
     consultarAcesso()
       .then((acesso) => {
         setIsAdmin(acesso.isAdmin);
-        setIsEquipe(acesso.roles.includes("admin") || acesso.roles.includes("analista"));
+        setIsEquipe(acesso.roles.includes("master") || acesso.roles.includes("admin") || acesso.roles.includes("analista"));
       })
       .catch(() => { setIsAdmin(false); setIsEquipe(false); });
   }, [consultarAcesso]);

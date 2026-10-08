@@ -34,7 +34,7 @@ function AnalisePage() {
   useEffect(() => {
     obterAcesso()
       .then((acesso) => {
-        const daEquipe = acesso.roles.includes("admin") || acesso.roles.includes("analista");
+        const daEquipe = acesso.roles.includes("master") || acesso.roles.includes("admin") || acesso.roles.includes("analista");
         if (!daEquipe) void navegar({ to: "/solicitacoes", replace: true });
         else {
           setEquipe(true);

@@ -51,7 +51,10 @@ function normalizarUrl(bruto: string) {
   return u.replace(/\/+$/, "").replace(/\/authenticate$/i, "").replace(/\/login$/i, "");
 }
 
-function lerCredenciais(): Credenciais | null {
+async function lerCredenciais(): Promise<Credenciais | null> {
+  const { loadSankhyaCredentials } = await import("./api-credentials.server");
+  const stored = await loadSankhyaCredentials();
+  if (stored) return { ...stored, url: normalizarUrl(stored.url) };
   const token = process.env["SANKHYA_TOKEN"];
   const clientId = process.env["SANKHYA_CLIENT_ID"];
   const clientSecret = process.env["SANKHYA_CLIENT_SECRET"];
@@ -60,8 +63,8 @@ function lerCredenciais(): Credenciais | null {
   return { url: normalizarUrl(url), token, clientId, clientSecret };
 }
 
-export function sankhyaConfigurado(): boolean {
-  return lerCredenciais() !== null;
+export async function sankhyaConfigurado(): Promise<boolean> {
+  return (await lerCredenciais()) !== null;
 }
 
 async function comTempoLimite<T>(executar: (signal: AbortSignal) => Promise<T>): Promise<T> {
@@ -159,7 +162,7 @@ export async function buscarAnaliseComercial(params: {
   codigoCliente: string | null;
   notaFiscal: string | null;
 }): Promise<AnaliseComercial> {
-  const cred = lerCredenciais();
+  const cred = await lerCredenciais();
   if (!cred) {
     return {
       configurado: false,
@@ -289,7 +292,7 @@ export type NotaResumo = { nunota: string; numero: string; data: string | null; 
 
 /** Últimas notas de venda do cliente dentro da janela de dias. */
 export async function listarNotasRecentes(codigoCliente: string, dias: number): Promise<NotaResumo[]> {
-  const cred = lerCredenciais();
+  const cred = await lerCredenciais();
   if (!cred) throw new Error("Integração com o Sankhya não configurada.");
   const codigo = escapar(codigoCliente.trim());
   const janela = Math.max(1, Math.min(365, Math.round(dias)));
@@ -308,7 +311,7 @@ export async function listarNotasRecentes(codigoCliente: string, dias: number): 
 
 /** Itens de uma nota de venda, validando que ela pertence ao cliente. */
 export async function listarItensNota(codigoCliente: string, nunota: string): Promise<Array<LinhaNota & { unidade: string }>> {
-  const cred = lerCredenciais();
+  const cred = await lerCredenciais();
   if (!cred) throw new Error("Integração com o Sankhya não configurada.");
   const codigo = escapar(codigoCliente.trim());
   const sessao = await autenticar(cred);
@@ -343,7 +346,7 @@ export type LojaParceiro = { codparc: string; nome: string; endereco: string; nu
 
 /** Lojas (parceiros ativos) vinculadas a um parceiro matriz. */
 export async function listarLojasMatriz(codMatriz: string): Promise<{ matriz: string | null; lojas: LojaParceiro[] }> {
-  const cred = lerCredenciais();
+  const cred = await lerCredenciais();
   if (!cred) throw new Error("Integração com o Sankhya não configurada.");
   const cod = Math.trunc(num(codMatriz));
   if (!cod) throw new Error("Código do parceiro matriz inválido.");

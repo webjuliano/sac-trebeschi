@@ -487,7 +487,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "analista" | "loja"
+      app_role: "master" | "admin" | "analista" | "loja"
       protocolo_status:
         | "aberto"
         | "em_analise"

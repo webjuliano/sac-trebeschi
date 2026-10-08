@@ -58,7 +58,7 @@ function AnaliseDetalhePage() {
     try {
       const [retorno, acesso] = await Promise.all([obter({ data: { id } }), obterAcesso()]);
       setDados(retorno);
-      const equipe = acesso.roles.includes("admin") || acesso.roles.includes("analista");
+      const equipe = acesso.roles.includes("master") || acesso.roles.includes("admin") || acesso.roles.includes("analista");
       setPodeAnalisar(equipe);
       setVerificandoAcesso(false);
       setStatus(retorno.protocolo.status === "aberto" ? "em_analise" : retorno.protocolo.status);

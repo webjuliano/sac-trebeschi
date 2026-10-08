@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type FormEvent } from "react";
-import { Ban, Building2, Download, KeyRound, Search, X, Loader2, Pencil, Plus, RotateCcw, ShieldCheck, Store, Trash2, Users } from "lucide-react";
+import { Ban, Building2, Database, Download, KeyRound, Search, X, Loader2, Pencil, Plus, RotateCcw, ShieldCheck, Store, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { PortalHeader } from "@/components/portal-header";
@@ -20,6 +20,8 @@ import {
   listarAdministracao,
   buscarLojasMatriz,
   importarLojasMatriz,
+  obterDadosApi,
+  salvarDadosApi,
 } from "@/lib/admin.functions";
 
 
@@ -49,9 +51,9 @@ function AdminPage() {
   const removerUsuario = useServerFn(excluirUsuario);
   const salvarEdicao = useServerFn(editarUsuario);
   const [dados, setDados] = useState<DadosAdmin | null>(null);
-  const [aba, setAba] = useState<"usuarios" | "lojas">("usuarios");
+  const [aba, setAba] = useState<"usuarios" | "lojas" | "api">("usuarios");
   const [buscaLoja, setBuscaLoja] = useState("");
-  const [role, setRole] = useState<"admin" | "analista" | "loja">("loja");
+  const [role, setRole] = useState<"master" | "admin" | "analista" | "loja">("loja");
   const [lojasSelecionadas, setLojasSelecionadas] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
 
@@ -111,14 +113,14 @@ function AdminPage() {
   return <div className="min-h-screen bg-background"><PortalHeader interno />
     <main className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex items-end justify-between border-b pb-6"><div><p className="text-sm font-semibold uppercase tracking-widest text-primary">Configuração</p><h1 className="mt-1 text-3xl font-bold">Administração</h1><p className="mt-2 text-sm text-muted-foreground">Cadastre acessos e defina quais lojas cada usuário pode visualizar.</p></div><ShieldCheck className="hidden size-9 text-primary sm:block" /></div>
-      <div className="mt-6 flex gap-1 border-b"><Button variant={aba === "usuarios" ? "default" : "ghost"} onClick={() => setAba("usuarios")}><Users /> Usuários</Button><Button variant={aba === "lojas" ? "default" : "ghost"} onClick={() => setAba("lojas")}><Store /> Lojas</Button></div>
-      {aba === "lojas" ? <div className="mt-8 grid gap-8 lg:grid-cols-[420px_1fr]">
+      <div className="mt-6 flex gap-1 border-b"><Button variant={aba === "usuarios" ? "default" : "ghost"} onClick={() => setAba("usuarios")}><Users /> Usuários</Button><Button variant={aba === "lojas" ? "default" : "ghost"} onClick={() => setAba("lojas")}><Store /> Lojas</Button>{dados.isMaster && <Button variant={aba === "api" ? "default" : "ghost"} onClick={() => setAba("api")}><Database /> Dados API</Button>}</div>
+      {aba === "api" && dados.isMaster ? <DadosApi /> : aba === "lojas" ? <div className="mt-8 grid gap-8 lg:grid-cols-[420px_1fr]">
         <form onSubmit={cadastrarLoja} className="space-y-5 border bg-card p-6"><div><h2 className="text-xl font-bold">Nova loja</h2><p className="mt-1 text-sm text-muted-foreground">Inclua uma unidade para liberar nos acessos.</p></div><Campo label="Nome da loja"><Input name="nome" required /></Campo><Campo label="Código"><Input name="codigo" required /></Campo><div className="grid grid-cols-2 gap-4"><Campo label="Código do cliente no Sankhya"><Input name="codigo_sankhya" required placeholder="Ex.: 1042" /></Campo><Campo label="Qtd dias vendas"><Input name="dias_vendas" type="number" min={1} max={365} defaultValue={30} required /></Campo></div><Campo label="CNPJ"><Input name="cnpj" /></Campo><Campo label="E-mail de contato"><Input name="email_contato" type="email" /></Campo><Button className="w-full" type="submit" disabled={salvando}>{salvando ? <Loader2 className="animate-spin" /> : <Plus />} Cadastrar loja</Button></form>
         <section className="space-y-4"><ImportarMatriz aoImportar={carregar} /><h2 className="text-lg font-bold">Lojas cadastradas</h2><Input type="search" placeholder="Pesquisar loja por nome ou código…" value={buscaLoja} onChange={(e) => setBuscaLoja(e.target.value)} />{(() => { const termo = buscaLoja.trim().toLowerCase(); const filtradas = termo ? dados.lojas.filter((loja) => `${loja.rede ?? ""} ${loja.nome} ${loja.codigo}`.toLowerCase().includes(termo)) : dados.lojas; return <div className="mt-4 overflow-hidden border bg-card">{filtradas.length === 0 ? <p className="p-4 text-sm text-muted-foreground">{dados.lojas.length === 0 ? "Nenhuma loja cadastrada." : `Nenhuma loja encontrada para “${buscaLoja}”.`}</p> : filtradas.map((loja) => <LinhaLoja key={loja.id} loja={loja} salvar={async (codigo_sankhya, dias_vendas) => { try { await salvarCodigoSankhya({ data: { loja_id: loja.id, codigo_sankhya, dias_vendas } }); toast.success("Loja atualizada."); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); } }} />)}</div>; })()}</section>
 
       </div> : <div className="mt-8 grid gap-8 lg:grid-cols-[420px_1fr]">
-        <form onSubmit={cadastrarUsuario} className="space-y-5 border bg-card p-6"><div><h2 className="text-xl font-bold">Novo usuário</h2><p className="mt-1 text-sm text-muted-foreground">Crie o acesso e escolha as lojas permitidas.</p></div><Campo label="Nome"><Input name="nome" required /></Campo><Campo label="E-mail"><Input name="email" type="email" required /></Campo><Campo label="Senha inicial"><Input name="senha" type="password" minLength={8} required /></Campo><Campo label="Perfil"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={role} onChange={(e) => { setRole(e.target.value as typeof role); setLojasSelecionadas([]); }}><option value="loja">Usuário de loja</option><option value="analista">Analista Trebeschi</option><option value="admin">Administrador</option></select></Campo>{role === "loja" && <SelecaoLojas lojas={dados.lojas} selecionadas={lojasSelecionadas} onChange={setLojasSelecionadas} />}<Button className="w-full" type="submit" disabled={salvando}>{salvando ? <Loader2 className="animate-spin" /> : <Plus />} Criar usuário</Button></form>
-        <section><h2 className="text-lg font-bold">Usuários cadastrados</h2><div className="mt-4 space-y-3">{dados.usuarios.map((usuario) => <Usuario key={usuario.id} usuario={usuario} lojas={dados.lojas} editar={async (valores) => { try { const r = await salvarEdicao({ data: { user_id: usuario.id, ...valores } }); if (!r.ok) { toast.error(r.mensagem); return false; } toast.success(r.mensagem); await carregar(); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); return false; } }} salvar={async (loja_ids) => { try { await salvarVinculos({ data: { user_id: usuario.id, loja_ids } }); toast.success("Lojas atualizadas."); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); } }} alterarStatus={async (ativo) => { try { const r = await mudarStatus({ data: { user_id: usuario.id, ativo } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível alterar o acesso."); } }} excluir={async () => { try { const r = await removerUsuario({ data: { user_id: usuario.id } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível excluir."); } }} />)}</div></section>
+        <form onSubmit={cadastrarUsuario} className="space-y-5 border bg-card p-6"><div><h2 className="text-xl font-bold">Novo usuário</h2><p className="mt-1 text-sm text-muted-foreground">Crie o acesso e escolha as lojas permitidas.</p></div><Campo label="Nome"><Input name="nome" required /></Campo><Campo label="E-mail"><Input name="email" type="email" required /></Campo><Campo label="Senha inicial"><Input name="senha" type="password" minLength={8} required /></Campo><Campo label="Perfil"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={role} onChange={(e) => { setRole(e.target.value as typeof role); setLojasSelecionadas([]); }}><option value="loja">Usuário de loja</option><option value="analista">Analista Trebeschi</option><option value="admin">Administrador</option>{dados.isMaster && <option value="master">Administrador Master</option>}</select></Campo>{role === "loja" && <SelecaoLojas lojas={dados.lojas} selecionadas={lojasSelecionadas} onChange={setLojasSelecionadas} />}<Button className="w-full" type="submit" disabled={salvando}>{salvando ? <Loader2 className="animate-spin" /> : <Plus />} Criar usuário</Button></form>
+        <section><h2 className="text-lg font-bold">Usuários cadastrados</h2><div className="mt-4 space-y-3">{dados.usuarios.map((usuario) => <Usuario key={usuario.id} usuario={usuario} lojas={dados.lojas} podeGerenciarMaster={dados.isMaster} editar={async (valores) => { try { const r = await salvarEdicao({ data: { user_id: usuario.id, ...valores } }); if (!r.ok) { toast.error(r.mensagem); return false; } toast.success(r.mensagem); await carregar(); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); return false; } }} salvar={async (loja_ids) => { try { await salvarVinculos({ data: { user_id: usuario.id, loja_ids } }); toast.success("Lojas atualizadas."); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar."); } }} alterarStatus={async (ativo) => { try { const r = await mudarStatus({ data: { user_id: usuario.id, ativo } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível alterar o acesso."); } }} excluir={async () => { try { const r = await removerUsuario({ data: { user_id: usuario.id } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); await carregar(); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível excluir."); } }} />)}</div></section>
       </div>}
     </main></div>;
 }
@@ -146,26 +148,57 @@ function LinhaLoja({ loja, salvar }: { loja: DadosAdmin["lojas"][number]; salvar
 }
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) { return <div><Label className="mb-2 block">{label}</Label>{children}</div>; }
+function DadosApi() {
+  const obter = useServerFn(obterDadosApi);
+  const salvar = useServerFn(salvarDadosApi);
+  const [status, setStatus] = useState<Awaited<ReturnType<typeof obterDadosApi>> | null>(null);
+  const [salvandoApi, setSalvandoApi] = useState(false);
+  useEffect(() => { obter().then(setStatus).catch((error) => toast.error(error instanceof Error ? error.message : "Não foi possível consultar as credenciais.")); }, []);
+  async function enviar(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setSalvandoApi(true);
+    try {
+      const result = await salvar({ data: { baseUrl: String(form.get("baseUrl")), token: String(form.get("token")), clientId: String(form.get("clientId")), clientSecret: String(form.get("clientSecret")) } });
+      toast.success(result.mensagem);
+      setStatus(await obter());
+      event.currentTarget.reset();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Credenciais recusadas."); }
+    finally { setSalvandoApi(false); }
+  }
+  return <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,640px)_1fr]">
+    <form onSubmit={enviar} className="space-y-5 border bg-card p-6">
+      <div><h2 className="text-xl font-bold">Credenciais da API Sankhya</h2><p className="mt-1 text-sm text-muted-foreground">Os segredos são testados antes de serem salvos e permanecem criptografados.</p></div>
+      <Campo label="URL base"><Input name="baseUrl" type="url" defaultValue={status?.baseUrl || "https://api.sankhya.com.br"} required /></Campo>
+      <Campo label="X-Token"><Input name="token" type="password" autoComplete="new-password" required /></Campo>
+      <Campo label="Client ID"><Input name="clientId" type="password" autoComplete="new-password" required /></Campo>
+      <Campo label="Client Secret"><Input name="clientSecret" type="password" autoComplete="new-password" required /></Campo>
+      <Button className="w-full" type="submit" disabled={salvandoApi}>{salvandoApi ? <Loader2 className="animate-spin" /> : <Database />} Testar e salvar</Button>
+    </form>
+    <section className="border bg-card p-6"><h2 className="text-lg font-bold">Estado da integração</h2>{status ? <div className="mt-4 space-y-3 text-sm"><p><strong>Status:</strong> {status.configured ? "Configurada" : "Não configurada"}</p>{status.configured && <><p><strong>URL:</strong> {status.baseUrl}</p><p><strong>Última atualização:</strong> {status.updatedAt ? new Date(status.updatedAt).toLocaleString("pt-BR") : "—"}</p></>}</div> : <p className="mt-4 text-sm text-muted-foreground">Carregando…</p>}<p className="mt-6 text-xs text-muted-foreground">Por segurança, os valores salvos nunca são exibidos novamente. Para trocar uma credencial, informe o conjunto completo.</p></section>
+  </div>;
+}
 function SelecaoLojas({ lojas, selecionadas, onChange }: { lojas: DadosAdmin["lojas"]; selecionadas: string[]; onChange: (ids: string[]) => void }) { const [busca, setBusca] = useState(""); const termo = busca.trim().toLowerCase(); const filtradas = termo ? lojas.filter((loja) => `${loja.nome} ${loja.codigo}`.toLowerCase().includes(termo)) : lojas; return <fieldset><legend className="mb-2 text-sm font-medium">Lojas permitidas</legend><Input type="search" placeholder="Pesquisar loja por nome ou código…" value={busca} onChange={(e) => setBusca(e.target.value)} className="mb-2" /><div className="max-h-52 space-y-1 overflow-y-auto border p-2">{filtradas.length === 0 ? <p className="p-2 text-sm text-muted-foreground">Nenhuma loja encontrada para “{busca}”.</p> : filtradas.map((loja) => <label key={loja.id} className="flex cursor-pointer items-center gap-3 p-2 text-sm hover:bg-accent"><input type="checkbox" className="size-4 accent-primary" checked={selecionadas.includes(loja.id)} onChange={(e) => onChange(e.target.checked ? [...selecionadas, loja.id] : selecionadas.filter((id) => id !== loja.id))} /><span>{loja.nome} ({loja.codigo})</span></label>)}{selecionadas.length > 0 && <p className="border-t p-2 text-xs text-muted-foreground">{selecionadas.length} loja(s) selecionada(s) — as marcadas continuam selecionadas mesmo fora do filtro.</p>}</div></fieldset>; }
-function Usuario({ usuario, lojas, editar, salvar, alterarStatus, excluir }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; editar: (v: { nome: string; role: "admin" | "analista" | "loja"; loja_ids: string[] }) => Promise<boolean>; salvar: (ids: string[]) => Promise<void>; alterarStatus: (ativo: boolean) => Promise<void>; excluir: () => Promise<void> }) {
+function Usuario({ usuario, lojas, podeGerenciarMaster, editar, salvar, alterarStatus, excluir }: { usuario: DadosAdmin["usuarios"][number]; lojas: DadosAdmin["lojas"]; podeGerenciarMaster: boolean; editar: (v: { nome: string; role: "master" | "admin" | "analista" | "loja"; loja_ids: string[] }) => Promise<boolean>; salvar: (ids: string[]) => Promise<void>; alterarStatus: (ativo: boolean) => Promise<void>; excluir: () => Promise<void> }) {
   const [ids, setIds] = useState(usuario.loja_ids);
   const [editando, setEditando] = useState(false);
   const redefinirSenha = useServerFn(redefinirSenhaUsuario);
   const vinculadas = lojas.filter((l) => usuario.loja_ids.includes(l.id));
-  const perfil = usuario.roles.includes("admin") ? "Administrador" : usuario.roles.includes("analista") ? "Analista" : "Usuário de loja";
+  const perfil = usuario.roles.includes("master") ? "Administrador Master" : usuario.roles.includes("admin") ? "Administrador" : usuario.roles.includes("analista") ? "Analista" : "Usuário de loja";
   const editavel = usuario.roles.includes("loja");
-  const acessoTotal = usuario.roles.includes("admin") || usuario.roles.includes("analista");
+  const acessoTotal = usuario.roles.includes("master") || usuario.roles.includes("admin") || usuario.roles.includes("analista");
+  const podeAdministrarUsuario = podeGerenciarMaster || !usuario.roles.includes("master");
   const ativo = usuario.ativo !== false;
-  const roleAtual = usuario.roles.includes("admin") ? "admin" : usuario.roles.includes("analista") ? "analista" : "loja";
+  const roleAtual = usuario.roles.includes("master") ? "master" : usuario.roles.includes("admin") ? "admin" : usuario.roles.includes("analista") ? "analista" : "loja";
   const [editUser, setEditUser] = useState(false);
   const [nomeEd, setNomeEd] = useState(usuario.nome ?? "");
-  const [roleEd, setRoleEd] = useState<"admin" | "analista" | "loja">(roleAtual);
+  const [roleEd, setRoleEd] = useState<"master" | "admin" | "analista" | "loja">(roleAtual);
   const [idsEd, setIdsEd] = useState<string[]>(usuario.loja_ids);
   const [salvandoEd, setSalvandoEd] = useState(false);
   if (editUser) return <div className="space-y-4 border border-primary bg-card p-5">
     <div><strong>Editar usuário</strong><p className="mt-1 text-sm text-muted-foreground">{usuario.email}</p></div>
     <Campo label="Nome"><Input value={nomeEd} onChange={(e) => setNomeEd(e.target.value)} /></Campo>
-    <Campo label="Perfil"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={roleEd} onChange={(e) => setRoleEd(e.target.value as typeof roleEd)}><option value="loja">Usuário de loja</option><option value="analista">Analista Trebeschi</option><option value="admin">Administrador</option></select></Campo>
+    <Campo label="Perfil"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={roleEd} onChange={(e) => setRoleEd(e.target.value as typeof roleEd)}><option value="loja">Usuário de loja</option><option value="analista">Analista Trebeschi</option><option value="admin">Administrador</option>{podeGerenciarMaster && <option value="master">Administrador Master</option>}</select></Campo>
     {roleEd === "loja" ? <SelecaoLojas lojas={lojas} selecionadas={idsEd} onChange={setIdsEd} /> : <p className="text-sm text-muted-foreground">Acesso total — este perfil visualiza as solicitações de todas as lojas.</p>}
     {roleEd === "loja" && idsEd.length === 0 && <p className="text-xs text-destructive">Selecione pelo menos uma loja.</p>}
     <div className="flex gap-2"><Button size="sm" disabled={salvandoEd || nomeEd.trim().length < 2 || (roleEd === "loja" && idsEd.length === 0)} onClick={async () => { setSalvandoEd(true); const ok = await editar({ nome: nomeEd.trim(), role: roleEd, loja_ids: roleEd === "loja" ? idsEd : [] }); setSalvandoEd(false); if (ok) setEditUser(false); }}>{salvandoEd && <Loader2 className="animate-spin" />} Salvar alterações</Button><Button variant="ghost" size="sm" onClick={() => setEditUser(false)}>Cancelar</Button></div>
@@ -184,12 +217,12 @@ function Usuario({ usuario, lojas, editar, salvar, alterarStatus, excluir }: { u
       {editavel && !editando && (vinculadas.length === 0 ? <p className="mt-2 text-sm text-destructive">Nenhuma loja vinculada — este usuário não vê nenhuma solicitação.</p> : <div className="mt-2 flex flex-wrap gap-2">{vinculadas.map((l) => <span key={l.id} className="rounded-md border bg-muted px-2 py-1 text-xs">{l.nome} ({l.codigo})</span>)}</div>)}
       {editavel && editando && <div className="mt-3"><SelecaoLojas lojas={lojas} selecionadas={ids} onChange={setIds} /><div className="mt-3 flex gap-2"><Button size="sm" disabled={ids.length === 0} onClick={async () => { await salvar(ids); setEditando(false); }}>Salvar lojas</Button><Button variant="ghost" size="sm" onClick={() => { setIds(usuario.loja_ids); setEditando(false); }}>Cancelar</Button></div>{ids.length === 0 && <p className="mt-2 text-xs text-destructive">Selecione pelo menos uma loja.</p>}</div>}
     </div>
-    <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
+    {podeAdministrarUsuario && <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
       <Button variant="outline" size="sm" onClick={() => { setNomeEd(usuario.nome ?? ""); setRoleEd(roleAtual); setIdsEd(usuario.loja_ids); setEditUser(true); }}><Pencil /> Editar usuário</Button>
       <Button variant="outline" size="sm" onClick={async () => { const senha = window.prompt(`Nova senha para ${usuario.email} (mínimo 6 caracteres):`); if (senha === null) return; if (senha.length < 6) { toast.error("A senha precisa ter pelo menos 6 caracteres."); return; } try { const r = await redefinirSenha({ data: { user_id: usuario.id, senha } }); if (!r.ok) { toast.error(r.mensagem); return; } toast.success(r.mensagem); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível alterar a senha."); } }}><KeyRound /> Redefinir senha</Button>
       <Button variant="outline" size="sm" onClick={() => alterarStatus(!ativo)}>{ativo ? <><Ban /> Inativar acesso</> : <><RotateCcw /> Reativar acesso</>}</Button>
       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { if (window.confirm(`Excluir definitivamente ${usuario.email}? Só é possível se não houver nada vinculado.`)) void excluir(); }}><Trash2 /> Excluir</Button>
-    </div>
+    </div>}
   </div>;
 }
 type LojaMatriz = { codparc: string; nome: string; endereco: string; numero: string; cidade: string; uf: string; ja_cadastrada: boolean };
